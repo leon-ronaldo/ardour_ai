@@ -1,6 +1,7 @@
 // ignore_for_file: curly_braces_in_flow_control_structures
 
 import 'dart:async';
+import 'dart:ffi';
 
 import 'package:ardour_ai/app/modules/home/controllers/home_controller.dart';
 import 'package:ardour_ai/modules/geminiInteraction_geminiAPI.dart';
@@ -15,6 +16,10 @@ class ConversationGenerator {
 
   //variables and setters
   final String callWord = 'gemini';
+  Completer<void>? _speechCompleter;
+
+  //flags
+  bool isSpeaking = false;
 
   //maps
   Map<String, Map> moodsAndActions = {
@@ -72,6 +77,7 @@ class ConversationGenerator {
     speechEngine = TextToSpeechEngine();
     homeController = Get.find<HomeController>();
     geminiInteraction = GeminiInteraction();
+    listenForStatus();
     listenForRecognizedText();
     listenForConversationControls();
   }
@@ -89,18 +95,19 @@ class ConversationGenerator {
     print('listening for conversationGenerator controls');
     homeController.conversationGeneratorControlStream.stream
         .listen((conversationConrol) async {
-      if (conversationConrol['action'] == 'speak') {
-        if (conversationConrol['context'] == 'query') {
-          bool stopped = await speechEngine.speak('yes how can I help you');
-          if (stopped) {
-            setStatus('spoke');
-            Timer(
-                const Duration(milliseconds: 500),
-                () => setRecognitionControl(
-                    {'action': 'listenForQuery', 'delayFor': 1000}));
-          }
-        }
-      }
+      if (conversationConrol['action'] == 'speak') {}
+      if (conversationConrol['action'] == 'stopSpeakingAndListenQuery')
+        stopSpeakingAndListenForQuery();
+    });
+  }
+
+  Future<void> listenForStatus() async {
+    print('listening for status (conversationGenerator)');
+    homeController.statusStream.stream.listen((status) {
+      print('status (conversationGenerator): $status');
+
+      if (status == 'speaking') isSpeaking = true;
+      if (status == 'stoppedSpeaking') isSpeaking = false;
     });
   }
 
@@ -120,19 +127,17 @@ class ConversationGenerator {
           request['dialogue'].toLowerCase().split(' ');
 
       //user said to stop speaking, stop speaking immediately
-      if (request['dialogue'] == 'stop speaking' && speechEngine.isSpeaking) {
+      if (tokenizedWords.contains('stop') &&
+          tokenizedWords.contains('speaking')) {
         await stopSpeakingAndContinueInfiniteRecognition();
       }
 
       //if ardour is triggered and if something is being spoken, stop speaking immediately
       if (request['isCallPhrase'] &&
-          tokenizedWords.contains(callWord) &&
-          speechEngine.isSpeaking) {
+          request['dialogue'].toLowerCase() == 'gemini' &&
+          isSpeaking) {
         await stopSpeakingAndListenForQuery();
       }
-
-      //ignore case
-      if (request['isCallPhrase'] && !tokenizedWords.contains(callWord)) {}
 
       //if it is not a trigger for ardour and it is a query
       if (!request['isCallPhrase'] && request['isQuery']) {
@@ -157,14 +162,23 @@ class ConversationGenerator {
 
         //if clear proceed to response generation
         else {
-          speechEngine.speak(await geminiInteraction.getResponse(
-              actions['answering']!['prompt'](request['dialogue'])));
+          String dialogue = await geminiInteraction.getResponse(
+              actions['answering']!['prompt'](request['dialogue']));
+
+          homeController.responseGenerated.value =
+              dialogue.split(' ').elementAt(2);
+          homeController.update();
+
+          speechEngine.speak(dialogue);
 
           // debugCheck
           print('im here while speaking');
 
-          setStatus('listenedForQuery');
-          setStatus('startListening');
+          Timer(
+              const Duration(milliseconds: 1000),
+              () => setRecognitionControl({
+                    'action': 'startListenWhileSpeaking',
+                  }));
         }
       }
 
@@ -173,7 +187,7 @@ class ConversationGenerator {
       //          appearing in text which could trigger the listening again
       if (request['isCallPhrase'] && tokenizedWords.contains(callWord)) {
         print('inside query');
-        await listenForQueryContext();
+        await listenForQueryContextWithSpeech();
       }
     }
   }
@@ -181,22 +195,53 @@ class ConversationGenerator {
   //speech context methods
   Future<void> stopSpeakingAndContinueInfiniteRecognition() async {
     await speechEngine.stopSpeaking();
+    await waitForSpeechCompletion();
+    Timer(const Duration(milliseconds: 800), () => speechEngine.speak('okay!'));
+    await waitForSpeechCompletion();
     setStatus('listenedForQuery');
-    await speechEngine.speak('okay');
+    setStatus('startInfiniteRecognition');
   }
 
   Future<void> stopSpeakingAndListenForQuery() async {
+    print('inside stop speak');
     await speechEngine.stopSpeaking();
-    setStatus('listenForQuery');
-    speechEngine.speak('what?');
-    setRecognitionControl({'action': 'makeListenForQuery'});
+      await waitForSpeechCompletion();
+    Timer(
+        const Duration(milliseconds: 1000), () => speechEngine.speak('what?'));
+    await waitForSpeechCompletion();
+    Timer(const Duration(milliseconds: 500),
+        () => listenForQueryContextWithoutSpeech());
   }
 
-  Future<void> listenForQueryContext() async {
+  Future<void> listenForQueryContextWithSpeech() async {
     setStatus('listenForQuery');
+    await speechEngine.speak('yes how can I help you?');
+
+    await waitForSpeechCompletion();
+
     Timer(
         const Duration(milliseconds: 500),
-        () => setRecognitionControl(
-            {'action': 'makeListenForQuery', 'context': 'query'}));
+        () =>
+            setRecognitionControl({'action': 'listenForQuery', 'delayFor': 0}));
+  }
+
+  Future<void> listenForQueryContextWithoutSpeech() async {
+    setStatus('listenForQuery');
+    Timer(
+        const Duration(milliseconds: 1000),
+        () =>
+            setRecognitionControl({'action': 'listenForQuery', 'delayFor': 0}));
+  }
+
+  Future<void> waitForSpeechCompletion() async {
+    _speechCompleter = Completer<void>();
+    final subscription = homeController.statusStream.stream.listen((event) {
+      if (event == 'stoppedSpeaking') {
+        _speechCompleter!.complete();
+      }
+    });
+
+    await _speechCompleter!.future;
+    subscription.cancel();
   }
 }

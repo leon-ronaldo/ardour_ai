@@ -3,9 +3,7 @@
 import 'dart:async';
 
 import 'package:ardour_ai/app/modules/home/controllers/home_controller.dart';
-import 'package:ardour_ai/modules/speech_to_text_flutterTTS.dart';
 import 'package:get/get.dart';
-import 'package:get/get_connect/http/src/utils/utils.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -29,7 +27,8 @@ class SpeechRecognitionEngine {
 
   //flags
   bool listenForQuery = false;
-  bool spoke = false;
+  bool isSpeaking = false;
+  bool listeningWhileSpeaking = false;
 
   SpeechRecognitionEngine() {
     recognitionEngine = SpeechToText();
@@ -50,6 +49,9 @@ class SpeechRecognitionEngine {
           homeController.statusStream.add('notRecognizing');
 
         if (status == 'done') homeController.statusStream.add('recognized');
+
+        if (status == 'notListening' && listenForQuery)
+          homeController.statusStream.add('no query');
       },
     );
   }
@@ -95,6 +97,31 @@ class SpeechRecognitionEngine {
     print('===================xxGeminixx========================');
   }
 
+  Future<void> listenWhileSpeaking() async {
+    print('===================listenWhileSpeaking========================');
+    await recognitionEngine.listen(
+        onResult: (result) {
+          print('from listen while query : ${result.recognizedWords}');
+          if (result.recognizedWords
+              .toLowerCase()
+              .split(' ')
+              .contains(homeController.callWord)) {
+            homeController.conversationGeneratorControlStream
+                .add({'action': 'stopSpeakingAndListenQuery'});
+            'listen while query : ${result.recognizedWords}';
+            homeController.update();
+          }
+        },
+        listenFor: const Duration(seconds: 3),
+        localeId: localeId,
+        listenOptions: SpeechListenOptions(
+            sampleRate: 16000,
+            partialResults: true,
+            listenMode: ListenMode.dictation,
+            cancelOnError: false));
+    print('===================xxlistenWhileSpeakingxx========================');
+  }
+
   Future<void> stopListening() async {
     await recognitionEngine.stop();
     print('stopped');
@@ -102,22 +129,35 @@ class SpeechRecognitionEngine {
 
   //stream functions
 
-  void sendRecognitionResult(
-      SpeechRecognitionResult result, bool isCallPhrase) {
+  void sendRecognitionResult(dynamic result, bool isCallPhrase) {
     if (isCallPhrase)
-      homeController.recognizedDialogueStream.add({
-        'dialogue': result.recognizedWords,
-        'confidenceLevel': result.confidence,
-        'isCallPhrase': isCallPhrase,
-        'isQuery': false,
-      });
+      result is SpeechRecognitionResult
+          ? homeController.recognizedDialogueStream.add({
+              'dialogue': result.recognizedWords,
+              'confidenceLevel': result.confidence,
+              'isCallPhrase': isCallPhrase,
+              'isQuery': false,
+            })
+          : homeController.recognizedDialogueStream.add({
+              'dialogue': result,
+              'confidenceLevel': .65,
+              'isCallPhrase': isCallPhrase,
+              'isQuery': false,
+            });
     else
-      homeController.recognizedDialogueStream.add({
-        'dialogue': result.recognizedWords,
-        'confidenceLevel': result.confidence,
-        'isCallPhrase': isCallPhrase,
-        'isQuery': true,
-      });
+      result is SpeechRecognitionResult
+          ? homeController.recognizedDialogueStream.add({
+              'dialogue': result.recognizedWords,
+              'confidenceLevel': result.confidence,
+              'isCallPhrase': isCallPhrase,
+              'isQuery': true,
+            })
+          : homeController.recognizedDialogueStream.add({
+              'dialogue': result,
+              'confidenceLevel': .65,
+              'isCallPhrase': isCallPhrase,
+              'isQuery': true,
+            });
   }
 
   Future<void> listenForStatus() async {
@@ -129,22 +169,45 @@ class SpeechRecognitionEngine {
       if (status == 'listenForQuery') listenForQuery = true;
       if (status == 'listenedForQuery') listenForQuery = false;
 
-      //set spoke flag
-      if (status == 'speaking') spoke = false;
-      if (status == 'spoke') spoke = true;
+      //set isSpeaking flag
+      if (status == 'speaking') isSpeaking = true;
+      if (status == 'stoppedSpeaking') {
+        isSpeaking = false;
+        listeningWhileSpeaking = false;
+      }
 
       //delay to syncronize
-      await Future.delayed(const Duration(milliseconds: 500));
+      Timer(const Duration(milliseconds: 500), () async {
+        //infinite recognition
+        if (!listenForQuery && !listeningWhileSpeaking) if (status ==
+            'notRecognizing')
+          await Future.delayed(
+              const Duration(milliseconds: 500), () => startListening());
 
-      //infinite recognition
-      if (!listenForQuery) if (status == 'notRecognizing')
-        await Future.delayed(
-            const Duration(milliseconds: 500), () => startListening());
-      
-      //triggerToStartInfiniteRecognition
-      if (status == 'startListening')
-        await Future.delayed(
-            const Duration(milliseconds: 500), () => startListening());
+        //triggerToStartInfiniteRecognition
+        if (status == 'startInfiniteRecognition') {
+          listenForQuery = false;
+          await Future.delayed(
+              const Duration(milliseconds: 500), () => startListening());
+        }
+
+        //avail listenWhileSpeaking
+        if (isSpeaking && listeningWhileSpeaking) {
+          await Future.delayed(
+              const Duration(milliseconds: 500), () => listenWhileSpeaking());
+        }
+
+        // //no result during listen query
+        // if (status == 'no query' && listenForQuery) {
+        //   listenForQuery = false;
+        //   Timer(const Duration(milliseconds: 800), () => startListening());
+        // }
+
+        // //got result during listen query
+        // if (status == 'got query') {
+        //   listenForQuery = true;
+        // }
+      });
     });
   }
 
@@ -153,14 +216,18 @@ class SpeechRecognitionEngine {
     homeController.recognizerControlStream.stream.listen((control) async {
       print(control);
       print('listenQuery $listenForQuery');
-      if (control['action'] == 'makeListenForQuery') {
-        homeController.conversationGeneratorControlStream
-            .add({'action': 'speak', 'context': control['context']});
-      }
+
       if (control['action'] == 'listenForQuery') {
         listenQueryTimer =
             Timer(Duration(milliseconds: control['delayFor']), () {
           listenQuery();
+        });
+      }
+
+      if (control['action'] == 'startListenWhileSpeaking') {
+        Timer(const Duration(milliseconds: 1000), () {
+          listeningWhileSpeaking = true;
+          listenWhileSpeaking();
         });
       }
     });

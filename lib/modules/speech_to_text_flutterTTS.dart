@@ -19,36 +19,38 @@ class TextToSpeechEngine {
   late HomeController homeController;
 
   //flags
-  bool isSpeaking = false;
 
   TextToSpeechEngine() {
     speechEngine = FlutterTts();
     homeController = Get.find<HomeController>();
-    initSpeecEngine();
+    initSpeechEngine();
   }
 
-  void initSpeecEngine() async {
+  void initSpeechEngine() async {
     speechEngine.setLanguage("en-US");
     speechEngine.setPitch(2);
     speechEngine.setSpeechRate(0.8);
+
+    speechEngine.setCompletionHandler(() {
+      print('hey worked');
+      homeController.statusStream.add('stoppedSpeaking');
+    });
+
+    speechEngine.setCancelHandler(() {
+      print('heyoo worked');
+      homeController.statusStream.add('stoppedSpeaking');
+    });
   }
 
   Future<bool> speak(String dialogue) async {
-    isSpeaking = true;
+    homeController.statusStream.add('speaking');
     homeController.geminiDialogue.value = dialogue;
     homeController.update();
     await speechEngine.speak(dialogue);
-    isSpeaking = false;
     return true;
-  }
-
-  Future<void> pauseSpeaking() async {
-    await speechEngine.pause();
-    isSpeaking = false;
   }
 
   Future<void> stopSpeaking() async {
     await speechEngine.stop();
-    isSpeaking = false;
   }
 }

@@ -9,10 +9,13 @@ class HomeController extends GetxController {
 
   Rx<String> geminiDialogue = ''.obs;
   Rx<String> userDialogue = ''.obs;
+  Rx<String> responseGenerated = ''.obs;
 
   //module variables
   late SpeechRecognitionEngine recognitionModule;
   late ConversationGenerator conversationGenerator;
+
+  final String callWord = 'gemini';
 
   //stream variables
   StreamController recognizedDialogueStream = StreamController<Map>.broadcast();

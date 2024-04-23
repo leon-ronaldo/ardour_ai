@@ -15,6 +15,7 @@ class HomeView extends GetView<HomeController> {
       () => Container(
         height: controller.screenHeight,
         width: controller.screenWidth,
+        color: Colors.transparent,
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -24,6 +25,10 @@ class HomeView extends GetView<HomeController> {
                 style: TextStyle(fontSize: 16)),
             Container(height: 20),
             Text('Gemini : ${controller.geminiDialogue.value}',
+                style: TextStyle(fontSize: 16)),
+            Container(height: 20),
+            Text(
+                'Gemini response generated: ${controller.responseGenerated.value}',
                 style: TextStyle(fontSize: 16)),
           ],
         ),
