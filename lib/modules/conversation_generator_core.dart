@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:ffi';
 
 import 'package:ardour_ai/app/modules/home/controllers/home_controller.dart';
+import 'package:ardour_ai/main.dart';
 import 'package:ardour_ai/modules/geminiInteraction_geminiAPI.dart';
 import 'package:ardour_ai/modules/speech_to_text_flutterTTS.dart';
 import 'package:get/get.dart';
@@ -11,12 +12,12 @@ import 'package:get/get.dart';
 class ConversationGenerator {
   //engines and controllers
   late TextToSpeechEngine speechEngine;
-  late HomeController homeController;
+  late MainController mainController;
   late GeminiInteraction geminiInteraction;
 
   //variables and setters
   final String callWord = 'gemini';
-  Completer<void>? _speechCompleter;
+  Completer<void>? speechCompletionCompleter;
 
   //flags
   bool isSpeaking = false;
@@ -67,7 +68,7 @@ class ConversationGenerator {
         },
         'answering': {
           'prompt': (userRequest) {
-            return "$userRequest?, answer me in one short paragraph, be informative";
+            return "$userRequest?, answer me in short be informative, avoid speaking like an assistant, speak like a friend in deed";
           }
         },
         'operations': {'actions': () {}}
@@ -75,7 +76,7 @@ class ConversationGenerator {
 
   ConversationGenerator() {
     speechEngine = TextToSpeechEngine();
-    homeController = Get.find<HomeController>();
+    mainController = Get.find<MainController>();
     geminiInteraction = GeminiInteraction();
     listenForStatus();
     listenForRecognizedText();
@@ -85,7 +86,7 @@ class ConversationGenerator {
   //stream listen functions
   Future<void> listenForRecognizedText() async {
     print('listening for recognized texts');
-    homeController.recognizedDialogueStream.stream.listen((userDialogue) async {
+    mainController.recognizedDialogueStream.stream.listen((userDialogue) async {
       print(userDialogue);
       await detectSpeechContext(userDialogue);
     });
@@ -93,7 +94,7 @@ class ConversationGenerator {
 
   Future<void> listenForConversationControls() async {
     print('listening for conversationGenerator controls');
-    homeController.conversationGeneratorControlStream.stream
+    mainController.conversationGeneratorControlStream.stream
         .listen((conversationConrol) async {
       if (conversationConrol['action'] == 'speak') {}
       if (conversationConrol['action'] == 'stopSpeakingAndListenQuery')
@@ -103,21 +104,26 @@ class ConversationGenerator {
 
   Future<void> listenForStatus() async {
     print('listening for status (conversationGenerator)');
-    homeController.statusStream.stream.listen((status) {
+    mainController.statusStream.stream.listen((status) {
       print('status (conversationGenerator): $status');
 
       if (status == 'speaking') isSpeaking = true;
-      if (status == 'stoppedSpeaking') isSpeaking = false;
+      if (status == 'stoppedSpeaking') {
+        isSpeaking = false;
+        if (!speechCompletionCompleter!.isCompleted) {
+          speechCompletionCompleter!.complete();
+        }
+      }
     });
   }
 
   //stream update functions
   void setStatus(status) {
-    homeController.statusStream.add(status);
+    mainController.statusStream.add(status);
   }
 
   void setRecognitionControl(control) {
-    homeController.recognizerControlStream.add(control);
+    mainController.recognizerControlStream.add(control);
   }
 
   //detect speech context
@@ -164,10 +170,7 @@ class ConversationGenerator {
         else {
           String dialogue = await geminiInteraction.getResponse(
               actions['answering']!['prompt'](request['dialogue']));
-
-          homeController.responseGenerated.value =
-              dialogue.split(' ').elementAt(2);
-          homeController.update();
+          mainController.update();
 
           speechEngine.speak(dialogue);
 
@@ -179,6 +182,9 @@ class ConversationGenerator {
               () => setRecognitionControl({
                     'action': 'startListenWhileSpeaking',
                   }));
+
+          await waitForSpeechCompletion();
+          setStatus('recognizeInfinitely');
         }
       }
 
@@ -205,7 +211,7 @@ class ConversationGenerator {
   Future<void> stopSpeakingAndListenForQuery() async {
     print('inside stop speak');
     await speechEngine.stopSpeaking();
-      await waitForSpeechCompletion();
+    await waitForSpeechCompletion();
     Timer(
         const Duration(milliseconds: 1000), () => speechEngine.speak('what?'));
     await waitForSpeechCompletion();
@@ -234,14 +240,12 @@ class ConversationGenerator {
   }
 
   Future<void> waitForSpeechCompletion() async {
-    _speechCompleter = Completer<void>();
-    final subscription = homeController.statusStream.stream.listen((event) {
-      if (event == 'stoppedSpeaking') {
-        _speechCompleter!.complete();
-      }
-    });
-
-    await _speechCompleter!.future;
-    subscription.cancel();
+    // Create a new Completer if it's null or already completed
+    if (speechCompletionCompleter == null ||
+        speechCompletionCompleter!.isCompleted) {
+      speechCompletionCompleter = Completer<void>();
+    }
+    // Wait for the speech completion event
+    await speechCompletionCompleter!.future;
   }
 }

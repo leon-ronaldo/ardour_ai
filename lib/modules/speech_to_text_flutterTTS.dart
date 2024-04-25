@@ -1,4 +1,5 @@
 import 'package:ardour_ai/app/modules/home/controllers/home_controller.dart';
+import 'package:ardour_ai/main.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:get/get.dart';
 
@@ -16,13 +17,13 @@ import 'package:get/get.dart';
 class TextToSpeechEngine {
   //objects
   late FlutterTts speechEngine;
-  late HomeController homeController;
+  late MainController mainController;
 
   //flags
 
   TextToSpeechEngine() {
     speechEngine = FlutterTts();
-    homeController = Get.find<HomeController>();
+    mainController = Get.find<MainController>();
     initSpeechEngine();
   }
 
@@ -33,19 +34,23 @@ class TextToSpeechEngine {
 
     speechEngine.setCompletionHandler(() {
       print('hey worked');
-      homeController.statusStream.add('stoppedSpeaking');
+      mainController.statusStream.add('stoppedSpeaking');
     });
 
     speechEngine.setCancelHandler(() {
       print('heyoo worked');
-      homeController.statusStream.add('stoppedSpeaking');
+      mainController.statusStream.add('stoppedSpeaking');
     });
   }
 
   Future<bool> speak(String dialogue) async {
-    homeController.statusStream.add('speaking');
-    homeController.geminiDialogue.value = dialogue;
-    homeController.update();
+    mainController.statusStream.add('speaking');
+    mainController.messagesStreamController.add({
+      'profile': 'ardour',
+      'message': dialogue,
+      'time': DateTime.now()
+    });
+    mainController.update();
     await speechEngine.speak(dialogue);
     return true;
   }

@@ -10,19 +10,7 @@ class HomeController extends GetxController {
   Rx<String> geminiDialogue = ''.obs;
   Rx<String> userDialogue = ''.obs;
   Rx<String> responseGenerated = ''.obs;
-
-  //module variables
-  late SpeechRecognitionEngine recognitionModule;
-  late ConversationGenerator conversationGenerator;
-
-  final String callWord = 'gemini';
-
-  //stream variables
-  StreamController recognizedDialogueStream = StreamController<Map>.broadcast();
-  StreamController recognizerControlStream = StreamController<Map>.broadcast();
-  StreamController conversationGeneratorControlStream =
-      StreamController<Map>.broadcast();
-  StreamController statusStream = StreamController<dynamic>.broadcast();
+  
 
   //recognizedDialogueStream map structure
   // {
@@ -47,19 +35,10 @@ class HomeController extends GetxController {
   @override
   void onReady() async {
     super.onReady();
-    recognitionModule = SpeechRecognitionEngine();
-    conversationGenerator = ConversationGenerator();
-    await recognitionModule.initEngine();
-    await Future.delayed(const Duration(milliseconds: 1500),
-        () => recognitionModule.startListening());
   }
 
   @override
   void onClose() {
     super.onClose();
-    recognizedDialogueStream.close();
-    recognizerControlStream.close();
-    conversationGeneratorControlStream.close();
-    statusStream.close();
   }
 }

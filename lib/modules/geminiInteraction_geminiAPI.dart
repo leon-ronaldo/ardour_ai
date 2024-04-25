@@ -22,6 +22,7 @@ class GeminiInteraction {
         body: body);
 
     final decodedResponse = jsonDecode(response.body.toString());
+    print(decodedResponse);
     final text =
         decodedResponse['candidates'][0]['content']['parts'][0]['text'];
     return text;

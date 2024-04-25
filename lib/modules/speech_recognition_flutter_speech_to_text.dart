@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:ardour_ai/app/modules/home/controllers/home_controller.dart';
+import 'package:ardour_ai/main.dart';
 import 'package:get/get.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -19,7 +20,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 class SpeechRecognitionEngine {
   //engines and controllers
   late SpeechToText recognitionEngine;
-  late HomeController homeController;
+  late MainController mainController;
 
   //setters
   final String localeId = 'en_IN';
@@ -29,10 +30,12 @@ class SpeechRecognitionEngine {
   bool listenForQuery = false;
   bool isSpeaking = false;
   bool listeningWhileSpeaking = false;
+  bool recognizeInfinitely = true;
+  bool cameResultFromListenQuery = false;
 
   SpeechRecognitionEngine() {
     recognitionEngine = SpeechToText();
-    homeController = Get.find<HomeController>();
+    mainController = Get.find<MainController>();
     listenForStatus();
     listenForControl();
   }
@@ -43,15 +46,12 @@ class SpeechRecognitionEngine {
     await recognitionEngine.initialize(
       onStatus: (status) {
         if (status == 'listening')
-          homeController.statusStream.add('recognizing');
+          mainController.statusStream.add('recognizing');
 
         if (status == 'notListening')
-          homeController.statusStream.add('notRecognizing');
+          mainController.statusStream.add('notRecognizing');
 
-        if (status == 'done') homeController.statusStream.add('recognized');
-
-        if (status == 'notListening' && listenForQuery)
-          homeController.statusStream.add('no query');
+        if (status == 'done') mainController.statusStream.add('recognized');
       },
     );
   }
@@ -62,8 +62,7 @@ class SpeechRecognitionEngine {
         onResult: (result) {
           if (result.confidence > 0.6) {
             sendRecognitionResult(result, true);
-            homeController.userDialogue.value = result.recognizedWords;
-            homeController.update();
+            mainController.update();
           }
         },
         listenFor: const Duration(seconds: 60),
@@ -77,20 +76,29 @@ class SpeechRecognitionEngine {
 
   Future<void> listenQuery() async {
     await initEngine();
+    bool recognized = false; // Flag to track if recognition result is received
+    Timer
+        noRecognitionTimer; // Timer to check if no recognition result is received
+    noRecognitionTimer = Timer(const Duration(seconds: 60), () {
+      if (!recognized) {
+        mainController.statusStream.add('no query');
+      }
+    });
     print('===================Gemini========================');
     await recognitionEngine.listen(
         onResult: (result) {
           print('from query : ${result.recognizedWords}');
           if (result.confidence > 0.6) {
             sendRecognitionResult(result, false);
-            homeController.userDialogue.value =
-                'from query : ${result.recognizedWords}';
-            homeController.update();
+            mainController.update();
+            recognized = true;
+            noRecognitionTimer.cancel();
           }
         },
         listenFor: const Duration(seconds: 60),
         localeId: localeId,
         listenOptions: SpeechListenOptions(
+            sampleRate: 16000,
             partialResults: false,
             listenMode: ListenMode.dictation,
             cancelOnError: true));
@@ -105,11 +113,11 @@ class SpeechRecognitionEngine {
           if (result.recognizedWords
               .toLowerCase()
               .split(' ')
-              .contains(homeController.callWord)) {
-            homeController.conversationGeneratorControlStream
+              .contains(mainController.callWord)) {
+            mainController.conversationGeneratorControlStream
                 .add({'action': 'stopSpeakingAndListenQuery'});
             'listen while query : ${result.recognizedWords}';
-            homeController.update();
+            mainController.update();
           }
         },
         listenFor: const Duration(seconds: 3),
@@ -130,43 +138,62 @@ class SpeechRecognitionEngine {
   //stream functions
 
   void sendRecognitionResult(dynamic result, bool isCallPhrase) {
-    if (isCallPhrase)
-      result is SpeechRecognitionResult
-          ? homeController.recognizedDialogueStream.add({
-              'dialogue': result.recognizedWords,
-              'confidenceLevel': result.confidence,
-              'isCallPhrase': isCallPhrase,
-              'isQuery': false,
-            })
-          : homeController.recognizedDialogueStream.add({
-              'dialogue': result,
-              'confidenceLevel': .65,
-              'isCallPhrase': isCallPhrase,
-              'isQuery': false,
-            });
-    else
-      result is SpeechRecognitionResult
-          ? homeController.recognizedDialogueStream.add({
-              'dialogue': result.recognizedWords,
-              'confidenceLevel': result.confidence,
-              'isCallPhrase': isCallPhrase,
-              'isQuery': true,
-            })
-          : homeController.recognizedDialogueStream.add({
-              'dialogue': result,
-              'confidenceLevel': .65,
-              'isCallPhrase': isCallPhrase,
-              'isQuery': true,
-            });
+    if (isCallPhrase) {
+      if (result is SpeechRecognitionResult) {
+        String dialogue = result.recognizedWords;
+        mainController.recognizedDialogueStream.add({
+          'dialogue': dialogue,
+          'confidenceLevel': result.confidence,
+          'isCallPhrase': isCallPhrase,
+          'isQuery': false,
+        });
+
+        mainController.messagesStreamController.add({
+          'profile': 'user',
+          'message': dialogue,
+          'time': DateTime.now()
+        });
+      } else
+        mainController.recognizedDialogueStream.add({
+          'dialogue': result,
+          'confidenceLevel': .65,
+          'isCallPhrase': isCallPhrase,
+          'isQuery': false,
+        });
+    } else {
+      if (result is SpeechRecognitionResult) {
+        mainController.recognizedDialogueStream.add({
+          'dialogue': result.recognizedWords,
+          'confidenceLevel': result.confidence,
+          'isCallPhrase': isCallPhrase,
+          'isQuery': true,
+        });
+
+        mainController.messagesStreamController.add({
+          'profile': 'user',
+          'message': result.recognizedWords,
+          'time': DateTime.now()
+        });
+      } else
+        mainController.recognizedDialogueStream.add({
+          'dialogue': result,
+          'confidenceLevel': .65,
+          'isCallPhrase': isCallPhrase,
+          'isQuery': true,
+        });
+    }
   }
 
   Future<void> listenForStatus() async {
     print('listening for status');
-    homeController.statusStream.stream.listen((status) async {
+    mainController.statusStream.stream.listen((status) async {
       print(status);
 
       //set listenForQuery flag
-      if (status == 'listenForQuery') listenForQuery = true;
+      if (status == 'listenForQuery') {
+        listenForQuery = true;
+        recognizeInfinitely = false;
+      }
       if (status == 'listenedForQuery') listenForQuery = false;
 
       //set isSpeaking flag
@@ -176,17 +203,25 @@ class SpeechRecognitionEngine {
         listeningWhileSpeaking = false;
       }
 
+      //set recognizeInfinitely flag
+      if (status == 'recognizeInfinitely') {
+        recognizeInfinitely = true;
+        listenForQuery = false;
+        listeningWhileSpeaking = false;
+      }
+      if (status == 'dontRecognizeInfinitely') recognizeInfinitely = false;
+
       //delay to syncronize
       Timer(const Duration(milliseconds: 500), () async {
         //infinite recognition
-        if (!listenForQuery && !listeningWhileSpeaking) if (status ==
-            'notRecognizing')
+        if (!listenForQuery &&
+            !listeningWhileSpeaking &&
+            recognizeInfinitely) if (status == 'notRecognizing')
           await Future.delayed(
               const Duration(milliseconds: 500), () => startListening());
 
         //triggerToStartInfiniteRecognition
-        if (status == 'startInfiniteRecognition') {
-          listenForQuery = false;
+        if (status == 'recognizeInfinitely') {
           await Future.delayed(
               const Duration(milliseconds: 500), () => startListening());
         }
@@ -197,15 +232,19 @@ class SpeechRecognitionEngine {
               const Duration(milliseconds: 500), () => listenWhileSpeaking());
         }
 
-        // //no result during listen query
-        // if (status == 'no query' && listenForQuery) {
-        //   listenForQuery = false;
-        //   Timer(const Duration(milliseconds: 800), () => startListening());
-        // }
+        //no query
+        if (status == 'no query') {
+          recognizeInfinitely = true;
+          listenForQuery = false;
+          listeningWhileSpeaking = false;
 
-        // //got result during listen query
+          await Future.delayed(
+              const Duration(milliseconds: 500), () => startListening());
+        }
+
+        // //got query
         // if (status == 'got query') {
-        //   listenForQuery = true;
+        //   listenForQuery = false;
         // }
       });
     });
@@ -213,7 +252,7 @@ class SpeechRecognitionEngine {
 
   Future<void> listenForControl() async {
     print('listening for control');
-    homeController.recognizerControlStream.stream.listen((control) async {
+    mainController.recognizerControlStream.stream.listen((control) async {
       print(control);
       print('listenQuery $listenForQuery');
 
@@ -227,6 +266,9 @@ class SpeechRecognitionEngine {
       if (control['action'] == 'startListenWhileSpeaking') {
         Timer(const Duration(milliseconds: 1000), () {
           listeningWhileSpeaking = true;
+          isSpeaking = true;
+          recognizeInfinitely = false;
+          listenForQuery = false;
           listenWhileSpeaking();
         });
       }
