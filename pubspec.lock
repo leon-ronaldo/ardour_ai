@@ -70,22 +70,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.2"
-  flutter_overlay_apps:
-    dependency: "direct main"
-    description:
-      name: flutter_overlay_apps
-      sha256: ded9063edca4eb811c5a1e8604c5a4ece925c377438f0860fe0869a1276a9283
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.2.0"
-  flutter_overlay_window:
-    dependency: "direct main"
-    description:
-      name: flutter_overlay_window
-      sha256: af871da9270bf5d67e5a657d2e286dfafa43f3417e98fa9e3c06da3f9d0f340e
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.4"
   flutter_test:
     dependency: "direct dev"
     description: flutter

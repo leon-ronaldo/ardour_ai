@@ -40,6 +40,9 @@ class MainController extends GetxController {
 
   //variables and setters
   final String callWord = 'gemini';
+  
+  Rx<bool> speechConversationEnabled = false.obs;
+  bool isInsideApp = true;
 
   //stream variables
   StreamController recognizedDialogueStream = StreamController<Map>.broadcast();

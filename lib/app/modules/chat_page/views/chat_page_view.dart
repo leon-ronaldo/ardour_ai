@@ -35,25 +35,6 @@ class ChatPageView extends GetView<ChatPageController> {
               )),
           Positioned(
             top: 2,
-            right: 2,
-            child: Container(
-              height: controller.screenHeight * 0.28,
-              width: controller.screenWidth * 0.45,
-              decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(color: Colors.grey.shade400, blurRadius: 5)
-                        .scale(5)
-                  ],
-                  image: DecorationImage(
-                      image: AssetImage("assets/images/hi.png"),
-                      fit: BoxFit.cover),
-                  borderRadius:
-                      BorderRadius.only(bottomLeft: Radius.circular(80))),
-            ),
-          ),
-          Positioned(
-            top: 2,
             child: Container(
               width: controller.screenWidth,
               padding: const EdgeInsets.only(left: 20, right: 20, top: 20),

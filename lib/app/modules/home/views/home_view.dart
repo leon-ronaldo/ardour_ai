@@ -3,7 +3,6 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_overlay_apps/flutter_overlay_apps.dart';
 
 import 'package:get/get.dart';
 
@@ -37,10 +36,6 @@ class HomeView extends GetView<HomeController> {
           ElevatedButton(
               onPressed: () async {
                 print('hello');
-                await FlutterOverlayApps.showOverlay(
-                    height: 300,
-                    width: 400,
-                    alignment: OverlayAlignment.center);
               },
               child: Text('popup or popdown')),
 

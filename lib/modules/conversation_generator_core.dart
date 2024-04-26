@@ -88,7 +88,10 @@ class ConversationGenerator {
     print('listening for recognized texts');
     mainController.recognizedDialogueStream.stream.listen((userDialogue) async {
       print(userDialogue);
-      await detectSpeechContext(userDialogue);
+      if (!mainController.speechConversationEnabled.value)
+        await detectSpeechContext(userDialogue);
+      else
+        await reply(userDialogue);
     });
   }
 
@@ -169,7 +172,7 @@ class ConversationGenerator {
         //if clear proceed to response generation
         else {
           String dialogue = await geminiInteraction.getResponse(
-              actions['answering']!['prompt'](request['dialogue']));
+             request['dialogue']);
           mainController.update();
 
           speechEngine.speak(dialogue);
@@ -196,6 +199,18 @@ class ConversationGenerator {
         await listenForQueryContextWithSpeech();
       }
     }
+  }
+
+  //reply
+  Future<void> reply(Map request) async {
+    setStatus('waitForListen');
+    String dialogue = await geminiInteraction
+        .getResponse(request['dialogue']);
+    mainController.update();
+
+    speechEngine.speak(dialogue);
+    await waitForSpeechCompletion();
+    setStatus('startListenReply');
   }
 
   //speech context methods

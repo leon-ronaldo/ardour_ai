@@ -1,9 +1,11 @@
 import 'package:ardour_ai/app/modules/chat_page/controllers/chat_page_controller.dart';
 import 'package:ardour_ai/app/modules/home/controllers/home_controller.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:get/get_state_manager/get_state_manager.dart';
 
 class ChatBottomBar extends GetWidget<ChatPageController> {
   const ChatBottomBar({super.key});
@@ -35,19 +37,61 @@ class ChatBottomBar extends GetWidget<ChatPageController> {
                       color: Colors.grey, fontWeight: FontWeight.normal),
                   filled: true,
                   hintText: 'Type a message',
-                  suffixIcon: InkResponse(
-                    onTap: () {
-                      controller.speechConversationEnabled =
-                          !controller.speechConversationEnabled;
-                      if (controller.speechConversationEnabled)
-                        controller.mainController.recognitionModule
-                            .startListening();
-                      else
-                        controller.mainController.statusStream.add('dontRecognizeInfinitely');
-                    },
-                    child: Icon(
-                      Icons.mic,
-                      color: Colors.grey,
+                  suffixIcon: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    width: 80,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Obx(
+                          () => Visibility(
+                            visible: controller.isSpeaking.value,
+                            child: InkResponse(
+                              onTap: () {
+                                controller.mainController.conversationGenerator
+                                    .speechEngine
+                                    .stopSpeaking();
+                              },
+                              child: Icon(
+                                Icons.speaker_notes_off,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                        InkResponse(
+                          onTap: () {
+                            controller.mainController.speechConversationEnabled
+                                    .value =
+                                !controller.mainController
+                                    .speechConversationEnabled.value;
+
+                            if (controller.mainController
+                                .speechConversationEnabled.value) {
+                              controller.mainController.recognitionModule
+                                  .stopListening();
+                              controller.mainController.statusStream
+                                  .add('dontRecognizeInfinitely');
+                              controller.mainController.recognitionModule
+                                  .listenOnce();
+                            } else {
+                              controller.mainController.statusStream
+                                  .add('dontRecognizeInfinitely');
+                              controller.mainController
+                                  .speechConversationEnabled.value = false;
+                            }
+                          },
+                          child: Obx(
+                            () => Icon(
+                              controller.mainController
+                                      .speechConversationEnabled.value
+                                  ? Icons.mic_off
+                                  : Icons.mic,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   )),
             ),

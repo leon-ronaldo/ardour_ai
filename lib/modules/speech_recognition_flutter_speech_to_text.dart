@@ -32,6 +32,7 @@ class SpeechRecognitionEngine {
   bool listeningWhileSpeaking = false;
   bool recognizeInfinitely = true;
   bool cameResultFromListenQuery = false;
+  bool waitForListening = false;
 
   SpeechRecognitionEngine() {
     recognitionEngine = SpeechToText();
@@ -105,6 +106,27 @@ class SpeechRecognitionEngine {
     print('===================xxGeminixx========================');
   }
 
+  Future<void> listenOnce() async {
+    await initEngine();
+    print('===================Gemini========================');
+    await recognitionEngine.listen(
+        onResult: (result) {
+          print('from query : ${result.recognizedWords}');
+          if (result.confidence > 0.6) {
+            sendRecognitionResult(result, false);
+            mainController.update();
+          }
+        },
+        listenFor: const Duration(seconds: 60),
+        localeId: localeId,
+        listenOptions: SpeechListenOptions(
+            sampleRate: 16000,
+            partialResults: false,
+            listenMode: ListenMode.dictation,
+            cancelOnError: true));
+    print('===================xxGeminixx========================');
+  }
+
   Future<void> listenWhileSpeaking() async {
     print('===================listenWhileSpeaking========================');
     await recognitionEngine.listen(
@@ -148,11 +170,8 @@ class SpeechRecognitionEngine {
           'isQuery': false,
         });
 
-        mainController.messagesStreamController.add({
-          'profile': 'user',
-          'message': dialogue,
-          'time': DateTime.now()
-        });
+        mainController.messagesStreamController.add(
+            {'profile': 'user', 'message': dialogue, 'time': DateTime.now()});
       } else
         mainController.recognizedDialogueStream.add({
           'dialogue': result,
@@ -203,6 +222,14 @@ class SpeechRecognitionEngine {
         listeningWhileSpeaking = false;
       }
 
+      if (status == 'waitForListen') {
+        waitForListening = true;
+      }
+
+      if (status == 'startListenReply') {
+        waitForListening = false;
+      }
+
       //set recognizeInfinitely flag
       if (status == 'recognizeInfinitely') {
         recognizeInfinitely = true;
@@ -219,6 +246,15 @@ class SpeechRecognitionEngine {
             recognizeInfinitely) if (status == 'notRecognizing')
           await Future.delayed(
               const Duration(milliseconds: 500), () => startListening());
+
+        //infinite listen
+        if ((mainController.isInsideApp &&
+            !waitForListening &&
+            mainController.speechConversationEnabled.value)) {
+          waitForListening = false;
+          await Future.delayed(
+              const Duration(milliseconds: 500), () => listenOnce());
+        }
 
         //triggerToStartInfiniteRecognition
         if (status == 'recognizeInfinitely') {

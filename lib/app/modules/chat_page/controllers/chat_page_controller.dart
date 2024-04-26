@@ -11,13 +11,14 @@ import 'package:get/get.dart';
 class ChatPageController extends GetxController {
   //widget variables
   double screenHeight = 0, screenWidth = 0;
-  bool speechConversationEnabled = false;
+
+  Rx<bool> isSpeaking = false.obs;
 
   RxList<Widget> chatWidgets = <Widget>[].obs;
   TextEditingController chatTextController = TextEditingController();
 
   //controllers
-  late MainController mainController;
+  MainController mainController = Get.find<MainController>();
 
   @override
   void onInit() async {
@@ -30,8 +31,17 @@ class ChatPageController extends GetxController {
   @override
   void onReady() {
     super.onReady();
-    mainController = Get.find<MainController>();
+    
+    listenStatus();
+    listenMessages();
+  }
 
+  @override
+  void onClose() {
+    super.onClose();
+  }
+
+  void listenMessages() async {
     mainController.messagesStreamController.stream.listen((message) {
       print(message);
       message['profile'] == 'user'
@@ -50,9 +60,11 @@ class ChatPageController extends GetxController {
     });
   }
 
-  @override
-  void onClose() {
-    super.onClose();
+  void listenStatus() async {
+    mainController.statusStream.stream.listen((status) {
+      if (status == 'speaking') isSpeaking.value = true;
+      if (status == 'stoppedSpeaking') isSpeaking.value = false;
+    });
   }
 
   void processMessage(text) async {
@@ -61,8 +73,7 @@ class ChatPageController extends GetxController {
     mainController.messagesStreamController.add({
       'profile': 'ardour',
       'message': await mainController.conversationGenerator.geminiInteraction
-          .getResponse(mainController
-              .conversationGenerator.actions['answering']!['prompt'](text)),
+          .getResponse(text),
       'time': DateTime.now()
     });
   }

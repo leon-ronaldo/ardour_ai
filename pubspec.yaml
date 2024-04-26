@@ -13,8 +13,6 @@ dependencies:
   flutter_tts: ^4.0.2
   speech_to_text: ^6.6.1
   http: ^1.2.1
-  flutter_overlay_window: ^0.4.4
-  flutter_overlay_apps: ^1.2.0
 
 
 dev_dependencies: 
