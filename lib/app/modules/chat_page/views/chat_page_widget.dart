@@ -255,9 +255,14 @@ class SettingsWindow extends GetWidget<ChatPageController> {
 }
 
 class UserChatBubble extends GetWidget<ChatPageController> {
-  const UserChatBubble({super.key, required this.message, required this.time});
-  final String message;
-  final String time;
+  UserChatBubble(
+      {super.key,
+      required this.message,
+      required this.time,
+      this.reaction = 'null'});
+  String message;
+  String time;
+  String reaction = 'null';
 
   @override
   Widget build(BuildContext context) {
@@ -274,35 +279,47 @@ class UserChatBubble extends GetWidget<ChatPageController> {
             ),
           );
         },
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          padding: const EdgeInsets.all(10),
-          constraints: BoxConstraints(maxWidth: controller.screenWidth * 0.6),
-          decoration: const BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  bottomLeft: Radius.circular(20),
-                  topRight: Radius.circular(20))),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(bottom: 5),
-                child: Text(message,
+        child: Stack(alignment: Alignment.bottomRight, children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 18),
+            padding: const EdgeInsets.all(10),
+            constraints: BoxConstraints(
+              maxWidth: controller.screenWidth * 0.6,
+            ),
+            decoration: const BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    bottomLeft: Radius.circular(20),
+                    topRight: Radius.circular(20))),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 5),
+                  child: Text(message,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.normal)),
+                ),
+                Text('$hour : $minute',
                     style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 9,
                         fontWeight: FontWeight.normal)),
-              ),
-              Text('$hour : $minute',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.normal)),
-            ],
+              ],
+            ),
           ),
-        ));
+          reaction == 'null' ? Container() : Container(
+            margin: const EdgeInsets.only(right: 3, top: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: const BoxDecoration(
+                color: Colors.grey,
+                borderRadius: BorderRadius.all(Radius.circular(50))),
+            child: Text(reaction),
+          )
+        ]));
   }
 }
 
@@ -360,7 +377,8 @@ class ArdourChatBubble extends GetWidget<ChatPageController> {
 }
 
 class ArdourMediaBubble extends GetWidget<ChatPageController> {
-  const ArdourMediaBubble({super.key, required this.mediaPath, required this.time});
+  const ArdourMediaBubble(
+      {super.key, required this.mediaPath, required this.time});
   final String mediaPath;
   final String time;
 
@@ -370,38 +388,35 @@ class ArdourMediaBubble extends GetWidget<ChatPageController> {
     int hour = dateTime.hour;
     int minute = dateTime.minute;
 
-
     return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: controller.screenWidth * 0.54,
-                    height: controller.screenHeight * 0.25,
-                    decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(15),
-                            topRight: Radius.circular(15),
-                            bottomRight: Radius.circular(15)),
-                        border: Border.all(color: Colors.blueGrey, width: 3),
-                        image: DecorationImage(
-                            image: AssetImage(mediaPath),
-                            fit: BoxFit.cover)),
-                    //child: Image.asset('assets/gifs/happy/happy1.gif'),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.only(top: 5),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                    decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.all(Radius.circular(5))),
-                    child: Text('$hour : $minute',
-                        style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12,
-                            fontWeight: FontWeight.normal)),
-                  ),
-                ],
-              );
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: controller.screenWidth * 0.54,
+          height: controller.screenHeight * 0.25,
+          decoration: BoxDecoration(
+              borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(15),
+                  topRight: Radius.circular(15),
+                  bottomRight: Radius.circular(15)),
+              border: Border.all(color: Colors.blueGrey, width: 3),
+              image: DecorationImage(
+                  image: AssetImage(mediaPath), fit: BoxFit.cover)),
+          //child: Image.asset('assets/gifs/happy/happy1.gif'),
+        ),
+        Container(
+          margin: const EdgeInsets.only(top: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+          decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.all(Radius.circular(5))),
+          child: Text('$hour : $minute',
+              style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.normal)),
+        ),
+      ],
+    );
   }
 }

@@ -27,7 +27,13 @@ class GeminiInteraction {
     try {
       text = decodedResponse['candidates'][0]['content']['parts'][0]['text'];
     } catch (e) {
-      text = '🌎✨';
+      text = """{
+        "type": "text",
+        "expression": "low" ,
+        "mood": "happy",
+        "dialogue": "❤️",
+        "fetchMemory": "false"
+      }""";
     }
 
     return text;

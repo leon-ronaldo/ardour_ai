@@ -29,6 +29,7 @@ flutter:
     - assets/gifs/happy/
     - assets/gifs/surprise/
     - assets/gifs/sad/
+    - assets/gifs/missing/
 
   fonts:
     - family: antipasto

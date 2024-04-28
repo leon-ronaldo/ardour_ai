@@ -23,12 +23,14 @@ class ChatPageController extends GetxController {
   bool storingMemory = false;
   bool speakAboutMemory = false;
 
+  String username = 'ronaldo';
+
   List<dynamic> messages = [];
   List<dynamic> memories = [];
   RxList<Widget> chatWidgets = <Widget>[].obs;
 
   TextEditingController chatTextController = TextEditingController();
-  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+  late FlutterSecureStorage secureStorage;
   ScrollController chatWidgetsScrollController = ScrollController();
   final GlobalKey columnKey = GlobalKey();
 
@@ -68,6 +70,7 @@ class ChatPageController extends GetxController {
   @override
   void onInit() async {
     super.onInit();
+    secureStorage = mainController.secureStorage;
 
     screenHeight = Get.context!.height;
     screenWidth = Get.context!.width;
@@ -174,6 +177,20 @@ class ChatPageController extends GetxController {
 
   void addMessageWidget(message) {
     if (message['type'] == 'media') {
+      chatWidgets[chatWidgets.length - 1] = SizedBox(
+        width: screenWidth,
+        child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+          UserChatBubble(
+            message: message['message'],
+            time: message['time'],
+            reaction: '🥺',
+          )
+        ]),
+      );
+
+      update();
+      refresh();
+
       chatWidgets.add(SizedBox(
         width: screenWidth,
         child: Row(mainAxisAlignment: MainAxisAlignment.start, children: [
@@ -240,7 +257,10 @@ class ChatPageController extends GetxController {
 
     Map response = {};
 
-    response = jsonDecode(initResponse);
+    response = (initResponse.indexOf('`') == 0)
+        ? jsonDecode(initResponse.substring(
+            initResponse.indexOf('{'), initResponse.length - 3))
+        : jsonDecode(initResponse);
 
     if (response['expression'] == 'extreme') {
       mainController.messagesStreamController.add({
@@ -266,55 +286,89 @@ class ChatPageController extends GetxController {
     List<dynamic> lastFiveItems =
         messages.length <= 5 ? messages : messages.sublist(messages.length - 5);
 
-    // prompt +=
-    //     "these are the past conversations between me and my friend \n '$text' my friend said this now, create a json map that contains a 'dialogue' field with the exact dialogue that i should speak to my friend in this context, let it be short, include appropriate emojis can i use, and a 'mood' field which has 'happy', 'sad', 'surprise' as how i should react right now, and a 'expression' field which has 'extreme', 'average', 'low' values indicating the level of emotion, give exactly only the json so that i could copy it and use";
+    String prompt = """
+      hey can you help me with something? I have a friend named $username, i am chatting with him right now.
 
-    String prompt = """{
+      ${formatConversation(lastFiveItems)}
+
+      now my friend said this, "$text".
+
+      these are the conversations we had right now. is my friend speaking about the same topic? if not give me a dialogue so that i could start a conversation about something else,
+      if not, Just analyze his mood, the context we are speaking, and generate a dialogue to cope up with the topic, or to stop the topic based on my friend's mood.
+      i am a funny person who speak like a mad to my friend, if he sounds strange i too sound strange, if he yells at me, yell at him, even crack jokes at him, so let the dialogue be in a funny and not too formal one, so that i will sound naturally me.
+      generate json string like this.
+
+      {
         type: "text" / "media",
         expression: "extreme" / "average" / "low" ,
         mood: "happy" / "sad" / "surprise",
-        dialogue: the appropriate dialogue i should speak
-        fetchMemory: true / false
+        dialogue: only the appropriate dialogue that i should speak,
+        fetchMemory: true / false,
+        'reaction': a reaction emoji alone (if expression is extreme)
       }
 
-      this is a json format of the response that should be generated later.
-    """;
-    prompt += 'my friend : $text';
-    prompt += "\ncheck whether this is a query";
-    prompt +=
-        "\nif it is a query then generate a response that i should speak to my friend, be friendly and funny, informative tone";
-    prompt +=
-        "\nif not a query then check whether it is something related to my friend's personal aspects, if so generate a dialogue that i should say to my friend that i am remembering the past, add relevant emojis";
-    prompt +=
-        "\nif it is not related to my friend's personal aspects then understand the topic what is user is speaking";
-    prompt += "\nconsider the following conversation\n";
+      expression is the level of emotion our chat has,
+      type must be set to media if the expression is extreme,
+      mood contains how i should react to my friend,
+      dialogues must be more friendly with apropriate emojis,
+      if my friend is saying something about their personal life, let the dialogue be phrased in a strategic manner to request time for remembering things,
+      if my friend had asked a question, teach him with appropriate answer, in a tone how a friend teaches another friend
 
-    lastFiveItems.forEach((message) {
-      prompt +=
-          "${message['profile'] == 'ardour' ? 'me :' : 'friend :'} ${message['message']} \n";
+      just give me only the json string alone based on these constraints so that i could use it.
     });
 
-    prompt +=
-        "\nif the topic is related to this conversation then with this conversation in consideration generate a dialogue that i should speak to my friend, add relevant emojis";
+    """;
 
-    prompt +=
-        "\n observe the conversation keenly, watch the dialogues spoken by me, you should never generate a dialogue which is similar to what I already spoke";
+    // prompt +=
+    //     "these are the past conversations between me and my friend \n '$text' my friend said this now, create a json map that contains a 'dialogue' field with the exact dialogue that i should speak to my friend in this context, let it be short, include appropriate emojis can i use, and a 'mood' field which has 'happy', 'sad', 'surprise' as how i should react right now, and a 'expression' field which has 'extreme', 'average', 'low' values indicating the level of emotion, give exactly only the json so that i could copy it and use";
 
-    prompt +=
-        "\nif the topic is not related to this conversation, try to understand what my friend is trying to speak and generate a dialogue for me to start a conversation with my friend, if they are not willing to speak you could generate a dialogue for me to either convince them to stay or to just leave them (according to my friend's interest), add relevant emojis";
+    // String prompt = """{
+    //     type: "text" / "media",
+    //     expression: "extreme" / "average" / "low" ,
+    //     mood: "happy" / "sad" / "surprise",
+    //     dialogue: the appropriate dialogue i should speak
+    //     fetchMemory: true / false
+    //   }
 
-    prompt +=
-        "\nafter generating the most accurate dialogue within the specified constraints add the dialogue in the 'dialogue' field of the json. type field must be media if the level of emotion in this situation or chat is extreme. mood field must reflect how i must react to the current situation, fetchMemory must be true only if the conversation is about my friend's personal aspects";
+    //   this is a json format of the response that should be generated later.
+    // """;
+    // prompt += 'my friend : $text';
+    // prompt += "\ncheck whether this is a query";
+    // prompt +=
+    //     "\nif it is a query then generate a response that i should speak to my friend, be friendly and funny, informative tone";
+    // prompt +=
+    //     "\nif not a query then check whether it is something related to my friend's personal aspects, if so generate a dialogue that i should say to my friend that i am remembering the past, add relevant emojis";
+    // prompt +=
+    //     "\nif it is not related to my friend's personal aspects then understand the topic what is user is speaking";
+    // prompt += "\nconsider the following conversation\n";
 
-    prompt +=
-        "\ngive me only the json text with the generated values so that i could copy and use it.";
+    // lastFiveItems.forEach((message) {
+    //   prompt +=
+    //       "${message['profile'] == 'ardour' ? 'me :' : 'friend :'} ${message['message']} \n";
+    // });
+
+    // prompt +=
+    //     "\nif the topic is related to this conversation then with this conversation in consideration generate a dialogue that i should speak to my friend, add relevant emojis";
+
+    // prompt +=
+    //     "\n observe the conversation keenly, watch the dialogues spoken by me, you should never generate a dialogue which is similar to what I already spoke";
+
+    // prompt +=
+    //     "\nif the topic is not related to this conversation, try to understand what my friend is trying to speak and generate a dialogue for me to start a conversation with my friend, if they are not willing to speak you could generate a dialogue for me to either convince them to stay or to just leave them (according to my friend's interest), add relevant emojis";
+
+    // prompt +=
+    //     "\nafter generating the most accurate dialogue within the specified constraints add the dialogue in the 'dialogue' field of the json. type field must be media if the level of emotion in this situation or chat is extreme. mood field must reflect how i must react to the current situation, fetchMemory must be true only if the conversation is about my friend's personal aspects";
+
+    // prompt +=
+    //     "\ngive me only the json text with the generated values so that i could copy and use it.";
     return prompt;
   }
 
   String formatConversation(messages) {
     String formatted = "";
     messages.forEach((message) {
-      String speaker = (message['profile'] == 'ardour') ? 'me :' : 'friend :';
+      String speaker =
+          (message['profile'] == 'ardour') ? 'me :' : '$username :';
       formatted += "$speaker ${message['message']}\n";
     });
     return formatted;

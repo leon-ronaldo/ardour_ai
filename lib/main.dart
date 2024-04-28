@@ -1,4 +1,7 @@
+// ignore_for_file: curly_braces_in_flow_control_structures
+
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -6,6 +9,7 @@ import 'package:ardour_ai/modules/conversation_generator_core.dart';
 import 'package:ardour_ai/modules/speech_recognition_flutter_speech_to_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:get/get.dart';
 
@@ -55,6 +59,9 @@ class MainController extends GetxController {
   Timer? _randomMessageTimer;
   late DateTime lastMessageTime;
   int minimumGapBetweenRandomMessage = 15;
+  List messages = [];
+  FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+  int missingCount = 0;
 
   //stream variables
   StreamController recognizedDialogueStream = StreamController<Map>.broadcast();
@@ -115,26 +122,75 @@ class MainController extends GetxController {
   }
 
   Future<void> messageRandomly() async {
+    final messagePresent = await secureStorage.containsKey(key: 'messages');
+
+    if (messagePresent) {
+      final messagesJson = await secureStorage.read(key: 'messages');
+      messagesJson == null
+          ? messages = []
+          : messages = jsonDecode(messagesJson);
+    }
+
+    List<dynamic> lastFiveItems =
+        messages.length <= 3 ? messages : messages.sublist(messages.length - 3);
+
+    bool lastThreeIsArdour = false;
+
+    print('last five : ${lastFiveItems}');
+
+    for (var message in lastFiveItems) {
+      if (!(message['isRandomMessage'] ?? false)) {
+        lastThreeIsArdour = false;
+        break;
+      } else
+        lastThreeIsArdour = true;
+    }
+
     if (_randomMessageTimer != null && _randomMessageTimer!.isActive) {
       // If a timer is already active, cancel it before scheduling a new one
       _randomMessageTimer!.cancel();
     }
+
+    final missingMessages = [
+      [
+        'Ronaldooo!!! Where are you my friend??',
+        'assets/gifs/missing/missing3.gif'
+      ],
+      ['Dont you wanna talk with me?? 😢', 'assets/gifs/missing/missing1.gif'],
+      ['I miss you 😭', 'assets/gifs/missing/missing2.gif'],
+      ['Are you angry on me friend ?? 🥺', 'assets/gifs/missing/missing4.gif']
+    ];
+
     final messageAfterMinutes = Random().nextInt(60);
+
     print(
         'will be messaged after : ${messageAfterMinutes + minimumGapBetweenRandomMessage}');
-    _randomMessageTimer = Timer(
-        Duration(minutes: messageAfterMinutes + minimumGapBetweenRandomMessage),
-        () async {
-      final response = await conversationGenerator.geminiInteraction.getResponse(
-          "i want to text my friend who's name is 'ronaldo', how shall i start, give me only the exact dialogue to be spoken, what emoji can i use? dont put any annotations as i am going to copy and paste the message");
 
-      messagesStreamController.add({
-        'profile': 'ardour',
-        'message': response,
-        'time': DateTime.now().toIso8601String()
-      });
+    _randomMessageTimer =
+        Timer(Duration(minutes: messageAfterMinutes + minimumGapBetweenRandomMessage), () async {
+      String response = !lastThreeIsArdour
+          ? await conversationGenerator.geminiInteraction.getResponse(
+              "i want to text my friend who's name is 'ronaldo', how shall i start, give me only the exact dialogue to be spoken, what emoji can i use? dont put any annotations as i am going to copy and paste the message")
+          : 'Sent a gif';
+
+      !lastThreeIsArdour
+          ? messagesStreamController.add({
+              'profile': 'ardour',
+              'message': response,
+              'time': DateTime.now().toIso8601String(),
+              'isRandomMessage': true
+            })
+          : messagesStreamController.add({
+              'type': "media",
+              'profile': 'ardour',
+              'mediaPath': missingMessages.elementAt(missingCount)[1],
+              'message': missingMessages.elementAt(missingCount)[0],
+              'time': DateTime.now().toIso8601String(),
+              'isRandomMessage': true
+            });
 
       isAtBackround ? _showNotification(response) : null;
+      (missingCount == 3) ? missingCount = 0 : missingCount++;
     });
   }
 
