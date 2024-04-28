@@ -171,7 +171,7 @@ class SpeechRecognitionEngine {
         });
 
         mainController.messagesStreamController.add(
-            {'profile': 'user', 'message': dialogue, 'time': DateTime.now()});
+            {'profile': 'user', 'message': dialogue, 'time': DateTime.now().toIso8601String()});
       } else
         mainController.recognizedDialogueStream.add({
           'dialogue': result,
@@ -191,7 +191,7 @@ class SpeechRecognitionEngine {
         mainController.messagesStreamController.add({
           'profile': 'user',
           'message': result.recognizedWords,
-          'time': DateTime.now()
+          'time': DateTime.now().toIso8601String()
         });
       } else
         mainController.recognizedDialogueStream.add({

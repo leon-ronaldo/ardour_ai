@@ -13,6 +13,8 @@ dependencies:
   flutter_tts: ^4.0.2
   speech_to_text: ^6.6.1
   http: ^1.2.1
+  flutter_secure_storage: ^4.2.1
+  flutter_local_notifications: ^17.1.0
 
 
 dev_dependencies: 
@@ -24,4 +26,12 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/gifs/happy/
+    - assets/gifs/surprise/
+    - assets/gifs/sad/
+
+  fonts:
+    - family: antipasto
+      fonts:
+        - asset: assets/fonts/Zetafonts - AntipastoPro-DemiBold.otf
 

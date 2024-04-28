@@ -68,7 +68,7 @@ class ConversationGenerator {
         },
         'answering': {
           'prompt': (userRequest) {
-            return "$userRequest?, answer me in short be informative, avoid speaking like an assistant, speak like a friend in deed";
+            return """I am chatting with a friend right now, he said "$userRequest" what shall I reply I should sound in a more friendly tone give Me exactly the one dialogue that I should say, what emoji can I add?""";
           }
         },
         'operations': {'actions': () {}}
@@ -113,9 +113,10 @@ class ConversationGenerator {
       if (status == 'speaking') isSpeaking = true;
       if (status == 'stoppedSpeaking') {
         isSpeaking = false;
-        if (!speechCompletionCompleter!.isCompleted) {
-          speechCompletionCompleter!.complete();
-        }
+        if (speechCompletionCompleter != null)
+          if (!speechCompletionCompleter!.isCompleted) {
+            speechCompletionCompleter!.complete();
+          }
       }
     });
   }
@@ -172,7 +173,7 @@ class ConversationGenerator {
         //if clear proceed to response generation
         else {
           String dialogue = await geminiInteraction.getResponse(
-             request['dialogue']);
+              actions['answering']!['prompt'](request['dialogue']));
           mainController.update();
 
           speechEngine.speak(dialogue);
@@ -205,7 +206,7 @@ class ConversationGenerator {
   Future<void> reply(Map request) async {
     setStatus('waitForListen');
     String dialogue = await geminiInteraction
-        .getResponse(request['dialogue']);
+        .getResponse(actions['answering']!['prompt'](request['dialogue']));
     mainController.update();
 
     speechEngine.speak(dialogue);

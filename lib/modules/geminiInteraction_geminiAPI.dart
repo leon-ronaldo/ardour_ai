@@ -17,14 +17,19 @@ class GeminiInteraction {
 
     final response = await http.post(
         Uri.parse(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyAOZmLW1t75VFsI4zF1FHUTAEqavtxqi0U'),
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyCM3_2TIq7lhJZTnGJyvUy_U1P7m1kXngA'),
         headers: {'Content-Type': 'application/json'},
         body: body);
 
     final decodedResponse = jsonDecode(response.body.toString());
     print(decodedResponse);
-    final text =
-        decodedResponse['candidates'][0]['content']['parts'][0]['text'];
+    String text = '';
+    try {
+      text = decodedResponse['candidates'][0]['content']['parts'][0]['text'];
+    } catch (e) {
+      text = '🌎✨';
+    }
+
     return text;
   }
 }

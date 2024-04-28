@@ -48,7 +48,7 @@ class TextToSpeechEngine {
     mainController.messagesStreamController.add({
       'profile': 'ardour',
       'message': dialogue,
-      'time': DateTime.now()
+      'time': DateTime.now().toIso8601String()
     });
     mainController.update();
     await speechEngine.speak(dialogue);
