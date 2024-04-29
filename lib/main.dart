@@ -58,10 +58,11 @@ class MainController extends GetxController {
 
   Timer? _randomMessageTimer;
   late DateTime lastMessageTime;
-  int minimumGapBetweenRandomMessage = 15;
+  int minimumGapBetweenRandomMessage = 60;
   List messages = [];
   FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   int missingCount = 0;
+  String userName = 'ronaldo';
 
   //stream variables
   StreamController recognizedDialogueStream = StreamController<Map>.broadcast();
@@ -70,6 +71,8 @@ class MainController extends GetxController {
       StreamController<Map>.broadcast();
   StreamController statusStream = StreamController<dynamic>.broadcast();
   StreamController<Map> messagesStreamController =
+      StreamController<Map>.broadcast();
+  StreamController<Map> reminderStreamController =
       StreamController<Map>.broadcast();
 
   @override
@@ -105,6 +108,13 @@ class MainController extends GetxController {
 
     messagesStreamController.stream.listen((message) {
       messageRandomly();
+    });
+
+    reminderStreamController.stream.listen((reminder) {
+      print('reminder $reminder');
+
+      Timer(reminder['dateTime'].difference(DateTime.now()),
+          () => remind(reminder['reminderDialogue']));
     });
   }
 
@@ -166,8 +176,9 @@ class MainController extends GetxController {
     print(
         'will be messaged after : ${messageAfterMinutes + minimumGapBetweenRandomMessage}');
 
-    _randomMessageTimer =
-        Timer(Duration(minutes: messageAfterMinutes + minimumGapBetweenRandomMessage), () async {
+    _randomMessageTimer = Timer(
+        Duration(minutes: messageAfterMinutes + minimumGapBetweenRandomMessage),
+        () async {
       String response = !lastThreeIsArdour
           ? await conversationGenerator.geminiInteraction.getResponse(
               "i want to text my friend who's name is 'ronaldo', how shall i start, give me only the exact dialogue to be spoken, what emoji can i use? dont put any annotations as i am going to copy and paste the message")
@@ -189,15 +200,18 @@ class MainController extends GetxController {
               'isRandomMessage': true
             });
 
-      isAtBackround ? _showNotification(response) : null;
+      isAtBackround
+          ? _showNotification(response, 'chat_messages', 'Chat messages',
+              'Channel for chat messages')
+          : null;
       (missingCount == 3) ? missingCount = 0 : missingCount++;
     });
   }
 
-  Future<void> _showNotification(notification) async {
-    var androidDetails = AndroidNotificationDetails(
-        'chat_messages', 'Chat Messages',
-        channelDescription: 'Channel for chat notifications',
+  Future<void> _showNotification(
+      notification, channelId, channelName, channelDescription) async {
+    var androidDetails = AndroidNotificationDetails(channelId, channelName,
+        channelDescription: channelDescription,
         importance: Importance.max,
         priority: Priority.high,
         ticker: 'ticker',
@@ -214,6 +228,20 @@ class MainController extends GetxController {
         notification, // Notification body
         platformChannelSpecifics,
         payload: 'custom_sound');
+  }
+
+  Future<void> remind(dialogue) async {
+    conversationGenerator.speechEngine.speak('Hey $userName!!');
+    _showNotification('Heyyy $userName you have some reminder', 'reminder',
+        'Reminder', 'Channel for reminders');
+    await conversationGenerator.waitForSpeechCompletion();
+    Future.delayed(const Duration(seconds: 5));
+    conversationGenerator.speechEngine.speak(dialogue);
+    await conversationGenerator.waitForSpeechCompletion();
+    Future.delayed(const Duration(seconds: 5));
+    conversationGenerator.speechEngine.speak('Heyyyyyy!!!');
+    _showNotification(
+        dialogue, 'reminder', 'Reminder', 'Channel for reminders');
   }
 }
 
