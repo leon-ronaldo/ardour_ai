@@ -1,4 +1,4 @@
-// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables, curly_braces_in_flow_control_structures
+// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables, curly_braces_in_flow_control_structures, prefer_if_null_operators
 
 import 'dart:async';
 import 'dart:convert';
@@ -151,6 +151,21 @@ class ChatPageController extends GetxController {
         }
       }
 
+      if (message['reminder'] != null) {
+        mainController.reminderStreamController.add({
+          "title": message['reminder']['title'],
+          "dateTime": DateTime.parse(message['reminder']['dateTime']),
+          "reminderTime":
+              DateTime.parse(message['reminder']['reminderTime']) != null
+                  ? DateTime.parse(message['reminder']['reminderTime'])
+                  : null,
+          "description": message['reminder']['description'],
+          "reminderDialogue": message['reminder']['reminderDialogue'],
+          "dialogue":
+              message['reminder']['dialogue']
+        });
+      }
+
       if (message['title'] != null) {
         memories.add("""{
           "title": ${message['title']},
@@ -177,20 +192,6 @@ class ChatPageController extends GetxController {
 
   void addMessageWidget(message) {
     if (message['type'] == 'media') {
-      chatWidgets[chatWidgets.length - 1] = SizedBox(
-        width: screenWidth,
-        child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          UserChatBubble(
-            message: message['message'],
-            time: message['time'],
-            reaction: '🥺',
-          )
-        ]),
-      );
-
-      update();
-      refresh();
-
       chatWidgets.add(SizedBox(
         width: screenWidth,
         child: Row(mainAxisAlignment: MainAxisAlignment.start, children: [
@@ -296,15 +297,24 @@ class ChatPageController extends GetxController {
       these are the conversations we had right now. is my friend speaking about the same topic? if not give me a dialogue so that i could start a conversation about something else,
       if not, Just analyze his mood, the context we are speaking, and generate a dialogue to cope up with the topic, or to stop the topic based on my friend's mood.
       i am a funny person who speak like a mad to my friend, if he sounds strange i too sound strange, if he yells at me, yell at him, even crack jokes at him, so let the dialogue be in a funny and not too formal one, so that i will sound naturally me.
+      if my friend has asked me to remind me of something (task or reminder), set the reminder field with only the json string with the specified context, and let the dialogue be just affirmative
       generate json string like this.
 
       {
         type: "text" / "media",
         expression: "extreme" / "average" / "low" ,
         mood: "happy" / "sad" / "surprise",
-        dialogue: only the appropriate dialogue that i should speak,
+        dialogue: only the appropriate dialogue that i should speak (short within 2 lines),
         fetchMemory: true / false,
-        'reaction': a reaction emoji alone (if expression is extreme)
+        'reaction': a reaction emoji alone (if expression is extreme),
+        'reminder': {
+          'title': title of the reminder,
+          'dateTime': dart date time (Iso8601String only) of the specified deadline,
+          'reminderTime': dart date time (Iso8601String only) that reminds user before the deadline (set 30 minutes prior if not mentioned by user),
+          'description': a detailed description of what my friend should do,
+          'reminderDialogue': a dialogue that i should say to my friend prior to the deadline (funny tone, questioning)
+          'dialogue': a dialogue that i should say to remind my friend at the deadline (funny tone, questioning),
+        }
       }
 
       expression is the level of emotion our chat has,

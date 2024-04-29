@@ -262,7 +262,7 @@ class UserChatBubble extends GetWidget<ChatPageController> {
       this.reaction = 'null'});
   String message;
   String time;
-  String reaction = 'null';
+  String reaction;
 
   @override
   Widget build(BuildContext context) {
