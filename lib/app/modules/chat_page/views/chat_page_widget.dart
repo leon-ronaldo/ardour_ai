@@ -344,6 +344,11 @@ class ArdourChatBubble extends GetWidget<ChatPageController> {
             ),
           );
         },
+
+        onDoubleTap: () async {
+          
+        },
+
         child: Container(
           padding: const EdgeInsets.all(10),
           margin: const EdgeInsets.symmetric(vertical: 10),
