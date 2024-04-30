@@ -95,6 +95,10 @@ class ChatPageController extends GetxController {
     listenMessages();
     scrollToBottom();
 
+    mainController.recognizedDialogueStream.stream.listen((result) {
+      result['from'] != null ? processMessage(result['dialogue']) : null;
+    });
+
     chatWidgetsScrollController.addListener(() {
       final RenderBox renderBox =
           columnKey.currentContext!.findRenderObject() as RenderBox;
@@ -151,37 +155,22 @@ class ChatPageController extends GetxController {
         }
       }
 
-      if (message['reminder'] != null) {
-        mainController.reminderStreamController.add({
-          "title": message['reminder']['title'],
-          "dateTime": DateTime.parse(message['reminder']['dateTime']),
-          "reminderTime":
-              DateTime.parse(message['reminder']['reminderTime']) != null
-                  ? DateTime.parse(message['reminder']['reminderTime'])
-                  : null,
-          "description": message['reminder']['description'],
-          "reminderDialogue": message['reminder']['reminderDialogue'],
-          "dialogue":
-              message['reminder']['dialogue']
-        });
-      }
+      // if (message['title'] != null) {
+      //   memories.add("""{
+      //     "title": ${message['title']},
+      //     "description": ${message['description']},
+      //     "people": ${message['people']},
+      //     "significance": ${message['significance']},
+      //     "date": ${message['date']},
+      //   }""");
 
-      if (message['title'] != null) {
-        memories.add("""{
-          "title": ${message['title']},
-          "description": ${message['description']},
-          "people": ${message['people']},
-          "significance": ${message['significance']},
-          "date": ${message['date']},
-        }""");
+      //   secureStorage.write(key: 'messages', value: jsonEncode(memories));
+      //   storingMemory = false;
+      // }
 
-        secureStorage.write(key: 'messages', value: jsonEncode(memories));
-        storingMemory = false;
-      }
+      // if (message['title'] == null) storingMemory = false;
 
-      if (message['title'] == null) storingMemory = false;
-
-      print('memories: $memories');
+      // print('memories: $memories');
 
       messages.add(message);
       secureStorage.write(key: 'messages', value: jsonEncode(messages));
@@ -281,6 +270,21 @@ class ChatPageController extends GetxController {
               'message': response['dialogue'],
               'time': DateTime.now().toIso8601String()
             });
+
+    if (response['reminder'] != null) {
+      print('heyy reminder');
+      mainController.reminderStreamController.add({
+        "title": response['reminder']['title'],
+        "dateTime": DateTime.parse(response['reminder']['dateTime']),
+        "reminderTime":
+            DateTime.parse(response['reminder']['reminderTime']) != null
+                ? DateTime.parse(response['reminder']['reminderTime'])
+                : null,
+        "description": response['reminder']['description'],
+        "reminderDialogue": response['reminder']['reminderDialogue'],
+        "dialogue": response['reminder']['dialogue']
+      });
+    }
   }
 
   String generatePrompt(text) {

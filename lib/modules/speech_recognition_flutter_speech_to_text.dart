@@ -108,12 +108,17 @@ class SpeechRecognitionEngine {
 
   Future<void> listenOnce() async {
     await initEngine();
-    print('===================Gemini========================');
     await recognitionEngine.listen(
         onResult: (result) {
           print('from query : ${result.recognizedWords}');
           if (result.confidence > 0.6) {
-            sendRecognitionResult(result, false);
+            mainController.recognizedDialogueStream.add({
+              'dialogue': result.recognizedWords,
+              'confidenceLevel': result.confidence,
+              'isCallPhrase': false,
+              'isQuery': false,
+              'from': 'listenOnce'
+            });
             mainController.update();
           }
         },
@@ -124,7 +129,6 @@ class SpeechRecognitionEngine {
             partialResults: false,
             listenMode: ListenMode.dictation,
             cancelOnError: true));
-    print('===================xxGeminixx========================');
   }
 
   Future<void> listenWhileSpeaking() async {
@@ -170,8 +174,11 @@ class SpeechRecognitionEngine {
           'isQuery': false,
         });
 
-        mainController.messagesStreamController.add(
-            {'profile': 'user', 'message': dialogue, 'time': DateTime.now().toIso8601String()});
+        mainController.messagesStreamController.add({
+          'profile': 'user',
+          'message': dialogue,
+          'time': DateTime.now().toIso8601String()
+        });
       } else
         mainController.recognizedDialogueStream.add({
           'dialogue': result,

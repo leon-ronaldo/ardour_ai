@@ -58,7 +58,7 @@ class MainController extends GetxController {
 
   Timer? _randomMessageTimer;
   late DateTime lastMessageTime;
-  int minimumGapBetweenRandomMessage = 60;
+  int minimumGapBetweenRandomMessage = 45;
   List messages = [];
   FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   int missingCount = 0;
@@ -106,15 +106,22 @@ class MainController extends GetxController {
     conversationGenerator = ConversationGenerator();
     await recognitionModule.initEngine();
 
-    messagesStreamController.stream.listen((message) {
-      messageRandomly();
-    });
+    randomMessageChannel();
+    reminderChannel();
+  }
 
+  Future<void> reminderChannel() async {
     reminderStreamController.stream.listen((reminder) {
       print('reminder $reminder');
 
-      Timer(reminder['dateTime'].difference(DateTime.now()),
+      Timer(DateTime.parse(reminder['dateTime']).difference(DateTime.now()),
           () => remind(reminder['reminderDialogue']));
+    });
+  }
+
+  Future<void> randomMessageChannel() async {
+    messagesStreamController.stream.listen((message) {
+      messageRandomly();
     });
   }
 
@@ -177,7 +184,7 @@ class MainController extends GetxController {
         'will be messaged after : ${messageAfterMinutes + minimumGapBetweenRandomMessage}');
 
     _randomMessageTimer = Timer(
-        Duration(minutes: messageAfterMinutes + minimumGapBetweenRandomMessage),
+        Duration(seconds: minimumGapBetweenRandomMessage),
         () async {
       String response = !lastThreeIsArdour
           ? await conversationGenerator.geminiInteraction.getResponse(
