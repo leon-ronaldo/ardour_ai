@@ -108,7 +108,6 @@ class SpeechRecognitionEngine {
 
   Future<void> listenOnce() async {
     await initEngine();
-    print('===================Gemini========================');
     await recognitionEngine.listen(
         onResult: (result) {
           print('from query : ${result.recognizedWords}');
@@ -130,7 +129,6 @@ class SpeechRecognitionEngine {
             partialResults: false,
             listenMode: ListenMode.dictation,
             cancelOnError: true));
-    print('===================xxGeminixx========================');
   }
 
   Future<void> listenWhileSpeaking() async {

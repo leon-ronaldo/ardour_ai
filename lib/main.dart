@@ -58,12 +58,13 @@ class MainController extends GetxController {
 
   Timer? _randomMessageTimer;
   late DateTime lastMessageTime;
-  int minimumGapBetweenRandomMessage = 60;
+  int minimumGapBetweenRandomMessage = 45;
   List messages = [];
   FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   int missingCount = 0;
   String userName = 'Ronaldo';
-  Rx<double> humourLevel = 0.7.obs;late Timer currentTimeTimer;
+  Rx<double> humourLevel = 0.7.obs;
+  late Timer currentTimeTimer;
   Rx<String> currentTime =
       '${DateTime.now().hour < 10 ? '0${DateTime.now().hour}' : DateTime.now().hour} : ${DateTime.now().minute < 10 ? '0${DateTime.now().minute}' : DateTime.now().minute}'
           .obs;
@@ -118,10 +119,11 @@ class MainController extends GetxController {
     conversationGenerator = ConversationGenerator();
     await recognitionModule.initEngine();
 
-    messagesStreamController.stream.listen((message) {
-      messageRandomly();
-    });
+    randomMessageChannel();
+    reminderChannel();
+  }
 
+  Future<void> reminderChannel() async {
     reminderStreamController.stream.listen((reminder) {
       print('reminder $reminder');
 
@@ -132,6 +134,12 @@ class MainController extends GetxController {
               minutes:
                   reminder['dateTime'].difference(DateTime.now()).inMinutes),
           () => remind(reminder['reminderDialogue']));
+    });
+  }
+
+  Future<void> randomMessageChannel() async {
+    messagesStreamController.stream.listen((message) {
+      messageRandomly();
     });
   }
 
@@ -193,9 +201,8 @@ class MainController extends GetxController {
     print(
         'will be messaged after : ${messageAfterMinutes + minimumGapBetweenRandomMessage}');
 
-    _randomMessageTimer = Timer(
-        Duration(minutes: messageAfterMinutes + minimumGapBetweenRandomMessage),
-        () async {
+    _randomMessageTimer =
+        Timer(Duration(seconds: minimumGapBetweenRandomMessage), () async {
       String response =
           !lastThreeIsArdour ? generateRandomMessage() : 'Sent a gif';
 
