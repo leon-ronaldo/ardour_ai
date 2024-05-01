@@ -32,25 +32,25 @@ class ChatAppbar extends GetWidget<ChatPageController> {
             children: [
               Container(
                 margin: const EdgeInsets.only(right: 15),
-                child: InkResponse(
+                child: const InkResponse(
                   child: Icon(Icons.arrow_back_sharp),
                 ),
               ),
               InkResponse(
                 child: CircleAvatar(
                   radius: controller.screenWidth * .07,
-                  backgroundImage: AssetImage('assets/images/profile.jpg'),
+                  backgroundImage: const AssetImage('assets/images/profile.jpg'),
                 ),
               ),
               Container(
-                margin: EdgeInsets.only(left: 10),
+                margin: const EdgeInsets.only(left: 10),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Ardourika',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'antipasto',
                         fontSize: 18,
                       ),
@@ -71,7 +71,7 @@ class ChatAppbar extends GetWidget<ChatPageController> {
           InkResponse(
             onTap: () => controller.settingsIsOpen.value =
                 !controller.settingsIsOpen.value,
-            child: Icon(Icons.settings),
+            child: const Icon(Icons.settings),
           )
         ],
       ),
@@ -87,7 +87,7 @@ class ChatBottomBar extends GetWidget<ChatPageController> {
     return Container(
       height: controller.screenHeight * 0.1,
       width: controller.screenWidth,
-      color: Colors.grey.shade100,
+      color: Colors.transparent,
       padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -96,12 +96,12 @@ class ChatBottomBar extends GetWidget<ChatPageController> {
             height: controller.screenHeight * 0.07,
             width: controller.screenWidth * 0.77,
             decoration: BoxDecoration(boxShadow: [
-              BoxShadow(color: Colors.grey.shade400, blurRadius: 5).scale(5)
+              const BoxShadow(color: Colors.black26, blurRadius: 5).scale(5)
             ]),
             child: TextField(
               controller: controller.chatTextController,
               decoration: InputDecoration(
-                  border: OutlineInputBorder(
+                  border: const OutlineInputBorder(
                       borderSide: BorderSide.none,
                       borderRadius: BorderRadius.all(Radius.circular(50))),
                   fillColor: Colors.white,
@@ -124,7 +124,7 @@ class ChatBottomBar extends GetWidget<ChatPageController> {
                                     .speechEngine
                                     .stopSpeaking();
                               },
-                              child: Icon(
+                              child: const Icon(
                                 Icons.speaker_notes_off,
                                 color: Colors.grey,
                               ),
@@ -147,6 +147,8 @@ class ChatBottomBar extends GetWidget<ChatPageController> {
                               controller.mainController.recognitionModule
                                   .listenOnce();
                             } else {
+                              controller.mainController.recognitionModule
+                                  .stopListening();
                               controller.mainController.statusStream
                                   .add('dontRecognizeInfinitely');
                               controller.mainController
@@ -176,8 +178,9 @@ class ChatBottomBar extends GetWidget<ChatPageController> {
                   controller.chatTextController.clear();
                   controller.scrollToBottom();
                 },
-                child: Icon(
+                child: const Icon(
                   Icons.send,
+                  color: Colors.white,
                   size: 28,
                 )),
           )
@@ -216,7 +219,7 @@ class SettingsWindow extends GetWidget<ChatPageController> {
               boxShadow: [
                 BoxShadow(color: Colors.grey.shade400, blurRadius: 5).scale(5)
               ],
-              borderRadius: BorderRadius.all(Radius.circular(10)),
+              borderRadius: const BorderRadius.all(Radius.circular(10)),
               color: Colors.white),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -229,7 +232,12 @@ class SettingsWindow extends GetWidget<ChatPageController> {
                     .drain();
                 controller.update();
               }),
-              _settingButton('Ardourika settings', () async {}),
+              _settingButton('Ardourika settings', () async {
+                controller.mainController.remind('heyy there reminder working');
+                print(DateTime.now()
+                    .add(const Duration(minutes: 5))
+                    .difference(DateTime.now()));
+              }),
               Row(
                 children: [
                   const Text('Speech',
@@ -311,14 +319,17 @@ class UserChatBubble extends GetWidget<ChatPageController> {
               ],
             ),
           ),
-          reaction == 'null' ? Container() : Container(
-            margin: const EdgeInsets.only(right: 3, top: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: const BoxDecoration(
-                color: Colors.grey,
-                borderRadius: BorderRadius.all(Radius.circular(50))),
-            child: Text(reaction),
-          )
+          reaction == 'null'
+              ? Container()
+              : Container(
+                  margin: const EdgeInsets.only(right: 3, top: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: const BoxDecoration(
+                      color: Colors.grey,
+                      borderRadius: BorderRadius.all(Radius.circular(50))),
+                  child: Text(reaction),
+                )
         ]));
   }
 }
@@ -344,11 +355,7 @@ class ArdourChatBubble extends GetWidget<ChatPageController> {
             ),
           );
         },
-
-        onDoubleTap: () async {
-          
-        },
-
+        onDoubleTap: () async {},
         child: Container(
           padding: const EdgeInsets.all(10),
           margin: const EdgeInsets.symmetric(vertical: 10),
@@ -400,6 +407,7 @@ class ArdourMediaBubble extends GetWidget<ChatPageController> {
           width: controller.screenWidth * 0.54,
           height: controller.screenHeight * 0.25,
           decoration: BoxDecoration(
+              color: Colors.grey.shade300,
               borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(15),
                   topRight: Radius.circular(15),

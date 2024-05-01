@@ -78,9 +78,9 @@ class ConversationGenerator {
     speechEngine = TextToSpeechEngine();
     mainController = Get.find<MainController>();
     geminiInteraction = GeminiInteraction();
-    listenForStatus();
-    listenForRecognizedText();
-    listenForConversationControls();
+    // listenForStatus();
+    // listenForRecognizedText();
+    // listenForConversationControls();
   }
 
   //stream listen functions

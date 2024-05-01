@@ -21,7 +21,15 @@ class ChatPageView extends GetView<ChatPageController> {
       child: Container(
         height: controller.screenHeight,
         width: controller.screenWidth,
-        color: Colors.grey.shade100,
+        decoration: BoxDecoration(
+            gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: const [
+              Color.fromARGB(255, 79, 177, 205),
+              Color.fromARGB(255, 124, 129, 197),
+              Color.fromARGB(255, 178, 89, 133)
+            ])),
         child: Stack(
           alignment: Alignment.bottomCenter,
           children: [
@@ -30,7 +38,8 @@ class ChatPageView extends GetView<ChatPageController> {
               onVerticalDragDown: (onvat) =>
                   controller.settingsIsOpen.value = false,
               child: Container(
-                  padding: const EdgeInsets.only(left: 25, right: 25),
+                  padding: EdgeInsets.only(
+                      left: 25, right: 25, top: controller.screenHeight * 0.13),
                   margin: EdgeInsets.only(
                       bottom: controller.screenHeight * 0.1 + 20),
                   child: SingleChildScrollView(
@@ -69,22 +78,20 @@ class ChatPageView extends GetView<ChatPageController> {
                   child: InkResponse(
                     onTap: () => controller.scrollToBottom(),
                     child: Container(
-                      child: Icon(Icons.keyboard_double_arrow_down),
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                           borderRadius: BorderRadius.all(Radius.circular(50)),
                           color: Colors.white,
                           boxShadow: [
-                            BoxShadow(
-                                    color: Colors.grey.shade400, blurRadius: 5)
+                            BoxShadow(color: Colors.black38, blurRadius: 5)
                                 .scale(5)
                           ]),
+                      child: const Icon(Icons.keyboard_double_arrow_down),
                     ),
                   ),
                 ),
               ),
             ),
-          
           ],
         ),
       ),

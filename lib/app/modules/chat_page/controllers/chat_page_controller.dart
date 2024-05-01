@@ -27,6 +27,7 @@ class ChatPageController extends GetxController {
 
   List<dynamic> messages = [];
   List<dynamic> memories = [];
+  List<dynamic> people = [];
   RxList<Widget> chatWidgets = <Widget>[].obs;
 
   TextEditingController chatTextController = TextEditingController();
@@ -82,8 +83,19 @@ class ChatPageController extends GetxController {
           ? messages = []
           : messages = jsonDecode(messagesJson);
       loadMessages();
-      mainController.lastMessageTime = DateTime.parse(messages.last['time']);
-      print(mainController.lastMessageTime.toString());
+    }
+
+    final memoriesIsNotNull = await secureStorage.containsKey(key: 'memories');
+
+    if (memoriesIsNotNull) {
+      memories =
+          jsonDecode(await secureStorage.read(key: 'memories') ?? 'null');
+    }
+
+    final peopleIsNotNull = await secureStorage.containsKey(key: 'people');
+
+    if (peopleIsNotNull) {
+      people = jsonDecode(await secureStorage.read(key: 'people') ?? 'null');
     }
   }
 
@@ -94,6 +106,10 @@ class ChatPageController extends GetxController {
     listenStatus();
     listenMessages();
     scrollToBottom();
+
+    mainController.recognizedDialogueStream.stream.listen((recognition) {
+      if (recognition['from'] != null) processMessage(recognition['dialogue']);
+    });
 
     chatWidgetsScrollController.addListener(() {
       final RenderBox renderBox =
@@ -118,70 +134,6 @@ class ChatPageController extends GetxController {
     mainController.messagesStreamController.stream.listen((message) async {
       print(message);
       addMessageWidget(message);
-
-      if (message['fetchMemory'] ?? false) {
-        chatWidgets.add(SizedBox(
-          width: screenWidth,
-          child: Row(mainAxisAlignment: MainAxisAlignment.start, children: [
-            ArdourChatBubble(
-              message: message[
-                  'Hmm..... ${message['fetchMemoryContextKeyWord']} 🤔'],
-              time: message[DateTime.now().toIso8601String()],
-            )
-          ]),
-        ));
-        if (await secureStorage.containsKey(key: 'memories')) {
-          final memoryString =
-              await secureStorage.read(key: 'memories') ?? 'null';
-          if (memoryString != 'null') {
-            speakAboutMemory = true;
-          } else {
-            chatWidgets.add(SizedBox(
-              width: screenWidth,
-              child: Row(mainAxisAlignment: MainAxisAlignment.start, children: [
-                ArdourChatBubble(
-                  message: message[
-                      'You have never told me about ${message['fetchMemoryContextKeyWord']} 😒, willing to say now?'],
-                  time: message[DateTime.now().toIso8601String()],
-                )
-              ]),
-            ));
-            storingMemory = true;
-          }
-        }
-      }
-
-      if (message['reminder'] != null) {
-        mainController.reminderStreamController.add({
-          "title": message['reminder']['title'],
-          "dateTime": DateTime.parse(message['reminder']['dateTime']),
-          "reminderTime":
-              DateTime.parse(message['reminder']['reminderTime']) != null
-                  ? DateTime.parse(message['reminder']['reminderTime'])
-                  : null,
-          "description": message['reminder']['description'],
-          "reminderDialogue": message['reminder']['reminderDialogue'],
-          "dialogue":
-              message['reminder']['dialogue']
-        });
-      }
-
-      if (message['title'] != null) {
-        memories.add("""{
-          "title": ${message['title']},
-          "description": ${message['description']},
-          "people": ${message['people']},
-          "significance": ${message['significance']},
-          "date": ${message['date']},
-        }""");
-
-        secureStorage.write(key: 'messages', value: jsonEncode(memories));
-        storingMemory = false;
-      }
-
-      if (message['title'] == null) storingMemory = false;
-
-      print('memories: $memories');
 
       messages.add(message);
       secureStorage.write(key: 'messages', value: jsonEncode(messages));
@@ -254,15 +206,19 @@ class ChatPageController extends GetxController {
         .conversationGenerator.geminiInteraction
         .getResponse(prompt);
 
-    print(initResponse);
+    print('what ' + initResponse);
 
     Map response = {};
 
-    response = (initResponse.indexOf('`') == 0)
+    response = initResponse.indexOf('`') == 0
         ? jsonDecode(initResponse.substring(
             initResponse.indexOf('{'), initResponse.length - 3))
         : jsonDecode(initResponse);
 
+    await processContext(response);
+  }
+
+  Future<void> processContext(response) async {
     if (response['expression'] == 'extreme') {
       mainController.messagesStreamController.add({
         'type': "media",
@@ -281,6 +237,47 @@ class ChatPageController extends GetxController {
               'message': response['dialogue'],
               'time': DateTime.now().toIso8601String()
             });
+
+    if (response['memory'] != null) {
+      memories.add({
+        'title': response['memory']['title'],
+        'hero': response['memory']['hero'],
+        'peopleInvolved':
+            response['memory']['peopleInvolved'] ?? 'not mentioned',
+        'date': response['memory']['date'] ?? 'not mentioned',
+        'impact': response['memory']['impact'] ?? 'not mentioned',
+        'location': response['memory']['location'] ?? 'not mentioned'
+      });
+
+      secureStorage.write(key: 'memories', value: jsonEncode(memories));
+
+      print('memories: $memories');
+    }
+
+    if (response['person'] != null) {
+      people.add({
+        "name": response['person']['name'],
+        "age": response['person']['age'] ?? 'not mentioned',
+        "relation": response['person']['relation'] ?? 'not mentioned',
+        "bonding": response['person']['bonding'] ?? 'not mentioned',
+        "memory": response['person']['memory'] ?? 'not mentioned',
+        "remark": response['person']['remark'] ?? 'not mentioned'
+      });
+
+      secureStorage.write(key: 'people', value: jsonEncode(people));
+    }
+
+    if (response['reminder'] != null) {
+      mainController.reminderStreamController.add({
+        "title": response['reminder']['title'],
+        "dateTime": DateTime.parse(response['reminder']['dateTime']).toUtc(),
+        "reminderTime": response['reminder']['reminderTime'] ??
+            DateTime.now().add(const Duration(minutes: 15)).toUtc(),
+        "description": response['reminder']['description'],
+        "reminderDialogue": response['reminder']['reminderDialogue'],
+        "dialogue": response['reminder']['dialogue']
+      });
+    }
   }
 
   String generatePrompt(text) {
@@ -288,11 +285,10 @@ class ChatPageController extends GetxController {
         messages.length <= 5 ? messages : messages.sublist(messages.length - 5);
 
     String prompt = """
+      today is ${DateTime.now().day} ${DateTime.now().month}, ${DateTime.now().year}
       hey can you help me with something? I have a friend named $username, i am chatting with him right now.
 
-      ${formatConversation(lastFiveItems)}
-
-      now my friend said this, "$text".
+      ${(lastFiveItems.isEmpty) ? 'my friend said this "$text"' : '${formatConversation(lastFiveItems)} \nnow my friend said this' "$text"}
 
       these are the conversations we had right now. is my friend speaking about the same topic? if not give me a dialogue so that i could start a conversation about something else,
       if not, Just analyze his mood, the context we are speaking, and generate a dialogue to cope up with the topic, or to stop the topic based on my friend's mood.
@@ -305,7 +301,6 @@ class ChatPageController extends GetxController {
         expression: "extreme" / "average" / "low" ,
         mood: "happy" / "sad" / "surprise",
         dialogue: only the appropriate dialogue that i should speak (short within 2 lines),
-        fetchMemory: true / false,
         'reaction': a reaction emoji alone (if expression is extreme),
         'reminder': {
           'title': title of the reminder,
@@ -315,15 +310,36 @@ class ChatPageController extends GetxController {
           'reminderDialogue': a dialogue that i should say to my friend prior to the deadline (funny tone, questioning)
           'dialogue': a dialogue that i should say to remind my friend at the deadline (funny tone, questioning),
         }
+        saveMemory: true if my friend spoke about an incident or event in life else false,
+        savePerson: true if my friend spoke about any person related to them else false,
+        'memory': {
+          'title': catchy phrase about the incident,
+          'hero': about what my friend is mainly speaking about, 
+          'peopleInvolved', the people involved (if none set to null),
+          'date': date when the incident occured (Iso8601String only if mentioned, else none),
+          'impact': 'positive' / 'negative',
+          'location': emotional description of the locations mentioned (null if nothing mentioned)
+        },
+        'person': {
+          'name': name of the person (related to my friend),
+          'age': age of the person (null if not mentioned),
+          'relation': how they are related to user (null if not mentioned), 
+          'bonding': a description how my friend is bonded with them (null if not mentioned),
+          'memory': a description of any incident or past with the person (null if not mentioned),
+          'remark': "positive" / "negative",
+        },
       }
 
       expression is the level of emotion our chat has,
       type must be set to media if the expression is extreme,
       mood contains how i should react to my friend,
       dialogues must be more friendly with apropriate emojis,
-      if my friend is saying something about their personal life, let the dialogue be phrased in a strategic manner to request time for remembering things,
+      if my friend is saying something about an incident or some ascpect of their personal life, let the dialogue be phrased in a strategic manner to request time for remembering things,
+      if my friend is saying something about an person in their personal life, let the dialogue be phrased in a strategic manner to request time for remembering things about that person,
       if my friend had asked a question, teach him with appropriate answer, in a tone how a friend teaches another friend
 
+      no field must be missing, instead you may set it to null
+      remember my friend's name is '$username'
       just give me only the json string alone based on these constraints so that i could use it.
     });
 

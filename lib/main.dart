@@ -62,7 +62,11 @@ class MainController extends GetxController {
   List messages = [];
   FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   int missingCount = 0;
-  String userName = 'ronaldo';
+  String userName = 'Ronaldo';
+  Rx<double> humourLevel = 0.7.obs;late Timer currentTimeTimer;
+  Rx<String> currentTime =
+      '${DateTime.now().hour < 10 ? '0${DateTime.now().hour}' : DateTime.now().hour} : ${DateTime.now().minute < 10 ? '0${DateTime.now().minute}' : DateTime.now().minute}'
+          .obs;
 
   //stream variables
   StreamController recognizedDialogueStream = StreamController<Map>.broadcast();
@@ -74,6 +78,7 @@ class MainController extends GetxController {
       StreamController<Map>.broadcast();
   StreamController<Map> reminderStreamController =
       StreamController<Map>.broadcast();
+  StreamController timeStream = StreamController<String>.broadcast();
 
   @override
   void onInit() async {
@@ -96,6 +101,13 @@ class MainController extends GetxController {
     // Initialize the plugin
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
     WidgetsBinding.instance.addObserver(_AppLifecycleObserver());
+
+    updateTime();
+    timeStream.stream.listen((status) {
+      if (status == 'update') updateTime();
+      print('status');
+      update();
+    });
   }
 
   @override
@@ -113,7 +125,12 @@ class MainController extends GetxController {
     reminderStreamController.stream.listen((reminder) {
       print('reminder $reminder');
 
-      Timer(reminder['dateTime'].difference(DateTime.now()),
+      print(reminder['dateTime'].difference(DateTime.now()).inMinutes);
+
+      Timer(
+          Duration(
+              minutes:
+                  reminder['dateTime'].difference(DateTime.now()).inMinutes),
           () => remind(reminder['reminderDialogue']));
     });
   }
@@ -179,10 +196,8 @@ class MainController extends GetxController {
     _randomMessageTimer = Timer(
         Duration(minutes: messageAfterMinutes + minimumGapBetweenRandomMessage),
         () async {
-      String response = !lastThreeIsArdour
-          ? await conversationGenerator.geminiInteraction.getResponse(
-              "i want to text my friend who's name is 'ronaldo', how shall i start, give me only the exact dialogue to be spoken, what emoji can i use? dont put any annotations as i am going to copy and paste the message")
-          : 'Sent a gif';
+      String response =
+          !lastThreeIsArdour ? generateRandomMessage() : 'Sent a gif';
 
       !lastThreeIsArdour
           ? messagesStreamController.add({
@@ -201,15 +216,32 @@ class MainController extends GetxController {
             });
 
       isAtBackround
-          ? _showNotification(response, 'chat_messages', 'Chat messages',
+          ? _showNotification(0, response, 'chat_messages', 'Chat messages',
               'Channel for chat messages')
           : null;
       (missingCount == 3) ? missingCount = 0 : missingCount++;
     });
   }
 
-  Future<void> _showNotification(
-      notification, channelId, channelName, channelDescription) async {
+  String generateRandomMessage() {
+    List<Function> functions = [
+      () async {
+        //random message based on generated scenario
+        return await conversationGenerator.geminiInteraction.getResponse(
+            "hey can you do me a favour?? There is a friend named $userName. Now i wanna start a conversation with them. Can you create a general random scenario that i am in and generate an message only to send to my friend");
+      },
+      () async {
+        //random message based on random calls
+        return await conversationGenerator.geminiInteraction.getResponse(
+            "i want to text my friend who's name is 'ronaldo', how shall i start, give me only the exact dialogue to be spoken, what emoji can i use? dont put any annotations as i am going to copy and paste the message");
+      },
+    ];
+
+    return functions[Random().nextInt(functions.length)]();
+  }
+
+  Future<void> _showNotification(notificationId, notification, channelId,
+      channelName, channelDescription) async {
     var androidDetails = AndroidNotificationDetails(channelId, channelName,
         channelDescription: channelDescription,
         importance: Importance.max,
@@ -223,7 +255,7 @@ class MainController extends GetxController {
     var platformChannelSpecifics = NotificationDetails(android: androidDetails);
 
     await flutterLocalNotificationsPlugin.show(
-        1, // Notification ID
+        notificationId, // Notification ID
         'Ardourika : Ardour Ai', // Notification title
         notification, // Notification body
         platformChannelSpecifics,
@@ -231,17 +263,23 @@ class MainController extends GetxController {
   }
 
   Future<void> remind(dialogue) async {
-    conversationGenerator.speechEngine.speak('Hey $userName!!');
-    _showNotification('Heyyy $userName you have some reminder', 'reminder',
+    _showNotification(1, 'Heyyy $userName you have some reminder', 'reminder',
         'Reminder', 'Channel for reminders');
-    await conversationGenerator.waitForSpeechCompletion();
-    Future.delayed(const Duration(seconds: 5));
+    conversationGenerator.speechEngine.speak('Hey $userName!!');
+    await Future.delayed(const Duration(seconds: 10));
     conversationGenerator.speechEngine.speak(dialogue);
-    await conversationGenerator.waitForSpeechCompletion();
-    Future.delayed(const Duration(seconds: 5));
+    await Future.delayed(const Duration(seconds: 10));
     conversationGenerator.speechEngine.speak('Heyyyyyy!!!');
     _showNotification(
-        dialogue, 'reminder', 'Reminder', 'Channel for reminders');
+        1, dialogue, 'reminder', 'Reminder', 'Channel for reminders');
+  }
+
+  void updateTime() {
+    currentTimeTimer = Timer(const Duration(minutes: 1), () {
+      currentTime.value =
+          '${DateTime.now().hour < 10 ? '0${DateTime.now().hour}' : DateTime.now().hour} : ${DateTime.now().minute < 10 ? '0${DateTime.now().minute}' : DateTime.now().minute}';
+      timeStream.add('update');
+    });
   }
 }
 

@@ -19,6 +19,8 @@ class TextToSpeechEngine {
   late FlutterTts speechEngine;
   late MainController mainController;
 
+  List languageVoices = [];
+
   //flags
 
   TextToSpeechEngine() {
@@ -31,6 +33,8 @@ class TextToSpeechEngine {
     speechEngine.setLanguage("en-US");
     speechEngine.setPitch(2);
     speechEngine.setSpeechRate(0.8);
+    await speechEngine.getVoices.then((voices) => languageVoices = voices);
+    print(languageVoices);
 
     speechEngine.setCompletionHandler(() {
       print('hey worked');
@@ -41,6 +45,10 @@ class TextToSpeechEngine {
       print('heyoo worked');
       mainController.statusStream.add('stoppedSpeaking');
     });
+  }
+
+  void changeVoice(voice) async {
+    await speechEngine.setVoice(voice);
   }
 
   Future<bool> speak(String dialogue) async {
