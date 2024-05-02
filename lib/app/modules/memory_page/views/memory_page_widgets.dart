@@ -109,7 +109,7 @@ class BottomBar extends GetWidget<MemoryPageController> {
                             [
                               () => Get.toNamed('/home'),
                               () => {},
-                              () => Get.toNamed('page'),
+                              () {}, 
                               () => Get.toNamed('/chat-page')
                             ][index]();
                           },

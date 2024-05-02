@@ -188,10 +188,20 @@ class ChatPageController extends GetxController {
     mainController.statusStream.stream.listen((status) {
       if (status == 'speaking') isSpeaking.value = true;
       if (status == 'stoppedSpeaking') isSpeaking.value = false;
+      if (status == 'generatingResponse')
+        chatWidgets.value.add(Container(
+            alignment: Alignment.centerLeft,
+            width: screenWidth,
+            child: ChatGeneratingBubble()));
+
+      if (status == 'responseGenerated')
+        chatWidgets.value.remove(chatWidgets.value.last);
     });
   }
 
   void processMessage(text) async {
+    if (text == "" || text == " ") return;
+
     final prompt = generatePrompt(text);
     print('prompt : $prompt');
 
@@ -210,12 +220,21 @@ class ChatPageController extends GetxController {
 
     Map response = {};
 
-    response = initResponse.indexOf('`') == 0
-        ? jsonDecode(initResponse.substring(
-            initResponse.indexOf('{'), initResponse.length - 3))
-        : jsonDecode(initResponse);
-
-    await processContext(response);
+    if (initResponse.indexOf('`') == 0)
+      response = jsonDecode(initResponse.substring(
+          initResponse.indexOf('{'), initResponse.length - 3));
+    else
+      try {
+        response = jsonDecode(initResponse);
+        await processContext(response);
+      } catch (ex) {
+        mainController.messagesStreamController.add({
+              'type': 'message',
+              'profile': 'ardour',
+              'message': 'hmm.....',
+              'time': DateTime.now().toIso8601String()
+            });
+      }
   }
 
   Future<void> processContext(response) async {
@@ -270,9 +289,8 @@ class ChatPageController extends GetxController {
     if (response['reminder'] != null) {
       mainController.reminderStreamController.add({
         "title": response['reminder']['title'],
-        "dateTime": DateTime.parse(response['reminder']['dateTime']).toUtc(),
-        "reminderTime": response['reminder']['reminderTime'] ??
-            DateTime.now().add(const Duration(minutes: 15)).toUtc(),
+        "dateTime": response['reminder']['dateTime'] ?? DateTime.now().add(const Duration(minutes: 30)).toIso8601String(),
+        "reminderTime": response['reminder']['reminderTime'] ?? DateTime.now().add(const Duration(minutes: 60)).toIso8601String(),
         "description": response['reminder']['description'],
         "reminderDialogue": response['reminder']['reminderDialogue'],
         "dialogue": response['reminder']['dialogue']
@@ -315,7 +333,7 @@ class ChatPageController extends GetxController {
         'memory': {
           'title': catchy phrase about the incident,
           'hero': about what my friend is mainly speaking about, 
-          'peopleInvolved', the people involved (if none set to null),
+          'peopleInvolved', list of the people involved (if none set to null),
           'date': date when the incident occured (Iso8601String only if mentioned, else none),
           'impact': 'positive' / 'negative',
           'location': emotional description of the locations mentioned (null if nothing mentioned)

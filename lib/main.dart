@@ -55,11 +55,13 @@ class MainController extends GetxController {
   Rx<bool> speechConversationEnabled = false.obs;
   bool isAtBackround = false;
   bool isInsideApp = true;
+  Rx<bool> generatingText = false.obs;
 
   Timer? _randomMessageTimer;
   late DateTime lastMessageTime;
-  int minimumGapBetweenRandomMessage = 45;
+  int minimumGapBetweenRandomMessage = 30;
   List messages = [];
+  RxList reminders = [].obs;
   FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   int missingCount = 0;
   String userName = 'Ronaldo';
@@ -121,18 +123,31 @@ class MainController extends GetxController {
 
     randomMessageChannel();
     reminderChannel();
+
+    if (await secureStorage.containsKey(key: 'reminders'))
+      reminders.value =
+          jsonDecode(await secureStorage.read(key: 'reminders') ?? 'null');
   }
 
   Future<void> reminderChannel() async {
-    reminderStreamController.stream.listen((reminder) {
+    reminderStreamController.stream.listen((reminder) async {
       print('reminder $reminder');
 
-      print(reminder['dateTime'].difference(DateTime.now()).inMinutes);
+      reminders.add(reminder);
+      secureStorage.write(key: 'reminders', value: jsonEncode(reminders));
+      update();
+
+      print(DateTime.parse(reminder['dateTime'])
+          .toUtc()
+          .difference(DateTime.now())
+          .inMinutes);
 
       Timer(
           Duration(
-              minutes:
-                  reminder['dateTime'].difference(DateTime.now()).inMinutes),
+              minutes: DateTime.parse(reminder['dateTime'])
+                  .toUtc()
+                  .difference(DateTime.now())
+                  .inMinutes),
           () => remind(reminder['reminderDialogue']));
     });
   }
@@ -201,8 +216,9 @@ class MainController extends GetxController {
     print(
         'will be messaged after : ${messageAfterMinutes + minimumGapBetweenRandomMessage}');
 
-    _randomMessageTimer =
-        Timer(Duration(seconds: minimumGapBetweenRandomMessage), () async {
+    _randomMessageTimer = Timer(
+        Duration(minutes: messageAfterMinutes + minimumGapBetweenRandomMessage),
+        () async {
       String response =
           !lastThreeIsArdour ? generateRandomMessage() : 'Sent a gif';
 

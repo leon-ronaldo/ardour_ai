@@ -305,74 +305,120 @@ class Reminders extends GetWidget<HomeController> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      margin: const EdgeInsets.only(top: 20),
-      width: controller.screenWidth,
-      decoration: BoxDecoration(
-          borderRadius: const BorderRadius.all(Radius.circular(20)),
-          // Nested BoxDecoration for background effect
-          color: Colors.grey.shade100.withOpacity(0.6)),
-      child: Column(
-          children: List.generate(
-              controller.reminders.length + 1,
-              (index) => index == 0
-                  ? Container(
-                      margin: const EdgeInsets.only(bottom: 5),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Upcomind Reminders:',
-                            style: TextStyle(
-                                fontFamily: 'antipasto',
-                                fontSize: 22,
-                                color: Colors.black87),
-                          ),
-                          InkResponse(
-                            onTap: () {},
-                            child: Icon(
-                              Icons.add,
-                              size: 18,
+    return Obx(
+      () => Container(
+        padding: const EdgeInsets.all(15),
+        margin: const EdgeInsets.only(top: 20),
+        width: controller.screenWidth,
+        decoration: BoxDecoration(
+            borderRadius: const BorderRadius.all(Radius.circular(20)),
+            // Nested BoxDecoration for background effect
+            color: Colors.grey.shade100.withOpacity(0.6)),
+        child: Column(
+            children: controller.mainController.reminders.value.isEmpty
+                ? List.generate(
+                    2,
+                    (index) => index == 0
+                        ? Container(
+                            margin: const EdgeInsets.only(bottom: 5),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Upcomind Reminders:',
+                                  style: TextStyle(
+                                      fontFamily: 'antipasto',
+                                      fontSize: 22,
+                                      color: Colors.black87),
+                                ),
+                                InkResponse(
+                                  onTap: () {},
+                                  child: Icon(
+                                    Icons.add,
+                                    size: 18,
+                                  ),
+                                )
+                              ],
                             ),
                           )
-                        ],
-                      ),
-                    )
-                  : Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                controller.reminders[index - 1][0],
-                                style: const TextStyle(
-                                    fontFamily: 'antipasto',
-                                    fontSize: 16,
-                                    color: Colors.white),
-                              ),
-                              Text(
-                                'Reminds you at : ${controller.reminders[index - 1][1]}',
-                                style: const TextStyle(
-                                    fontFamily: 'antipasto',
-                                    fontSize: 16,
-                                    color: Colors.white),
-                              ),
-                            ],
-                          ),
-                          InkResponse(
-                            onTap: () {},
-                            child: Icon(
-                              Icons.close,
-                              size: 18,
+                        : Container(
+                            alignment: Alignment.center,
+                            margin: const EdgeInsets.symmetric(vertical: 10),
+                            width: controller.screenWidth,
+                            decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(20))),
+                            height: controller.screenHeight * 0.15,
+                            child: const Text(
+                              'You have not set any reminders',
+                              style: TextStyle(
+                                  fontFamily: 'antipasto',
+                                  fontSize: 16,
+                                  color: Colors.black54),
+                            ),
+                          ))
+                : List.generate(
+                    controller.mainController.reminders.value.length + 1,
+                    (index) => index == 0
+                        ? Container(
+                            margin: const EdgeInsets.only(bottom: 5),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Upcomind Reminders:',
+                                  style: TextStyle(
+                                      fontFamily: 'antipasto',
+                                      fontSize: 22,
+                                      color: Colors.black87),
+                                ),
+                                InkResponse(
+                                  onTap: () {},
+                                  child: Icon(
+                                    Icons.add,
+                                    size: 18,
+                                  ),
+                                )
+                              ],
                             ),
                           )
-                        ],
-                      ),
-                    ))),
+                        : Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      controller.mainController.reminders
+                                          .value[index - 1]['title'],
+                                      style: const TextStyle(
+                                          fontFamily: 'antipasto',
+                                          fontSize: 16,
+                                          color: Colors.white),
+                                    ),
+                                    Text(
+                                      'Reminds you at : ${DateTime.parse(controller.mainController.reminders.value[index - 1]['dateTime']).toUtc().hour} : ${DateTime.parse(controller.mainController.reminders.value[index - 1]['dateTime']).toUtc().minute}',
+                                      style: const TextStyle(
+                                          fontFamily: 'antipasto',
+                                          fontSize: 16,
+                                          color: Colors.white),
+                                    ),
+                                  ],
+                                ),
+                                InkResponse(
+                                  onTap: () {},
+                                  child: Icon(
+                                    Icons.close,
+                                    size: 18,
+                                  ),
+                                )
+                              ],
+                            ),
+                          ))),
+      ),
     );
   }
 }
@@ -383,7 +429,7 @@ class ComponentBreadCrumb extends GetWidget<HomeController> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-        height: controller.screenHeight * 0.45,
+        height: controller.screenHeight * 0.46,
         width: controller.screenWidth,
         child: GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
@@ -423,7 +469,7 @@ class ArdourikaSettings extends GetWidget<HomeController> {
     final voices = [];
     return Container(
       padding: const EdgeInsets.all(20),
-      margin: EdgeInsets.only(bottom: controller.screenHeight * 0.12),
+      margin: EdgeInsets.only(top: 20, bottom: controller.screenHeight * 0.12),
       decoration: BoxDecoration(
           borderRadius: const BorderRadius.all(Radius.circular(20)),
           color: Colors.grey.shade100.withOpacity(0.6)),

@@ -1,8 +1,13 @@
 import 'dart:convert';
+import 'package:ardour_ai/main.dart';
+import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
 class GeminiInteraction {
+  MainController mainController = Get.find<MainController>();
   Future<String> getResponse(requestText) async {
+    mainController.statusStream.add('generatingResponse');
+    mainController.generatingText.value = true;
     final prompt = {
       "contents": [
         {
@@ -36,6 +41,8 @@ class GeminiInteraction {
       }""";
     }
 
+    mainController.generatingText.value = false;
+    mainController.statusStream.add('responseGenerated');
     return text;
   }
 }

@@ -93,8 +93,6 @@ class HomeController extends GetxController {
       // Handle permission denied scenario (e.g., show a message)
       return;
     }
-
-    if (granted.isSuccess) retrieveCalendarEvents();
   }
 
   @override

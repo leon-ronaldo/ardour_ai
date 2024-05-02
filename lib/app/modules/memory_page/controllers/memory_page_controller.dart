@@ -20,7 +20,7 @@ class MemoryPageController extends GetxController {
   }
 
   @override
-  void onReady() async{
+  void onReady() async {
     super.onReady();
 
     isAvailable =

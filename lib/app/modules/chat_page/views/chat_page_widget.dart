@@ -4,9 +4,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:get/get_state_manager/get_state_manager.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class ChatAppbar extends GetWidget<ChatPageController> {
   const ChatAppbar({super.key});
@@ -39,7 +39,8 @@ class ChatAppbar extends GetWidget<ChatPageController> {
               InkResponse(
                 child: CircleAvatar(
                   radius: controller.screenWidth * .07,
-                  backgroundImage: const AssetImage('assets/images/profile.jpg'),
+                  backgroundImage:
+                      const AssetImage('assets/images/profile.jpg'),
                 ),
               ),
               Container(
@@ -430,6 +431,39 @@ class ArdourMediaBubble extends GetWidget<ChatPageController> {
                   fontWeight: FontWeight.normal)),
         ),
       ],
+    );
+  }
+}
+
+class ChatGeneratingBubble extends GetWidget<ChatPageController> {
+  const ChatGeneratingBubble({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      constraints: BoxConstraints(maxWidth: controller.screenWidth * 0.2),
+      decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
+              topRight: Radius.circular(20))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            alignment: Alignment.center,
+            height: 20,
+            margin: const EdgeInsets.only(bottom: 5),
+            child: const SpinKitThreeBounce(
+              color: Colors.grey,
+              size: 22,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
