@@ -22,7 +22,7 @@ class GeminiInteraction {
 
     final response = await http.post(
         Uri.parse(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyCM3_2TIq7lhJZTnGJyvUy_U1P7m1kXngA'),
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyBHrfMTin4JQkIY9VfC6VAFR1UXug27uok'),
         headers: {'Content-Type': 'application/json'},
         body: body);
 
